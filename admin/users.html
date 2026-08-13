@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Management</title>
+    <link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body>
+
+<div class="container">
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <div class="logo">🛠️ Admin Panel</div>
+
+        <nav class="nav">
+            <a href="dashboard.html">Dashboard</a>
+            <a href="users.html" class="active">Users</a>
+            <a href="labs.html">Laboratories</a>
+            <a href="classrooms.html">Classrooms</a>
+            <a href="resources.html">Resources</a>
+            <a href="conflicts.html">Conflicts</a>
+            <a href="reports.html">Reports</a>
+            <a href="profile.html">Profile</a>
+            <a href="../login.html">Logout</a>
+        </nav>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main">
+
+        <div class="topbar">
+            <h2>User Management</h2>
+            <button class="btn">+ Add User</button>
+        </div>
+
+        <div class="card">
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Role</th>
+                        <th>Email</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    <tr>
+                        <td>Dr. Smith</td>
+                        <td>Faculty</td>
+                        <td>smith@college.edu</td>
+                        <td><span class="status available">Active</span></td>
+                    </tr>
+
+                    <tr>
+                        <td>Priya</td>
+                        <td>Lab Assistant</td>
+                        <td>priya@college.edu</td>
+                        <td><span class="status available">Active</span></td>
+                    </tr>
+
+                    <tr>
+                        <td>System Admin</td>
+                        <td>Admin</td>
+                        <td>admin@college.edu</td>
+                        <td><span class="status available">Active</span></td>
+                    </tr>
+                </tbody>
+            </table>
+
+        </div>
+
+    </main>
+
+</div>
+
+<script src="../assets/js/app.js"></script>
+</body>
+</html>

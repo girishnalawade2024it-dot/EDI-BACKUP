@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Laboratories</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body>
+
+<div class="container">
+
+<aside class="sidebar">
+<div class="logo">🛠️ Admin Panel</div>
+
+<nav class="nav">
+<a href="dashboard.html">Dashboard</a>
+<a href="users.html">Users</a>
+<a href="labs.html" class="active">Laboratories</a>
+<a href="classrooms.html">Classrooms</a>
+<a href="resources.html">Resources</a>
+<a href="conflicts.html">Conflicts</a>
+<a href="reports.html">Reports</a>
+<a href="profile.html">Profile</a>
+<a href="../login.html">Logout</a>
+</nav>
+</aside>
+
+<main class="main">
+
+<div class="topbar">
+<h2>Laboratory Management</h2>
+<button class="btn">+ Add Laboratory</button>
+</div>
+
+<div class="card">
+
+<table>
+<tr>
+<th>Laboratory</th>
+<th>Capacity</th>
+<th>Status</th>
+</tr>
+
+<tr>
+<td>Lab 407A</td>
+<td>35</td>
+<td><span class="status available">Available</span></td>
+</tr>
+
+<tr>
+<td>Lab 408A</td>
+<td>60</td>
+<td><span class="status booked">Occupied</span></td>
+</tr>
+
+<tr>
+<td>Lab 409A</td>
+<td>40</td>
+<td><span class="status pending">Maintenance</span></td>
+</tr>
+
+</table>
+
+</div>
+
+</main>
+</div>
+
+<script src="../assets/js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Lab Assistant Dashboard</title>
+    <link rel="stylesheet" href="../assets/css/style.css" />
+</head>
+<body>
+
+<div class="container">
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <div class="logo">🧪 Lab Assistant</div>
+
+        <nav class="nav">
+            <a href="dashboard.html" class="active">Dashboard</a>
+            <a href="schedule.html">Daily Schedule</a>
+            <a href="requests.html">Requests</a>
+            <a href="inventory.html">Inventory</a>
+            <a href="profile.html">Profile</a>
+            <a href="../login.html">Logout</a>
+        </nav>
+    </aside>
+
+    <!-- Main Content -->
+    <div class="main-content">
+
+        <h1>Lab Assistant Dashboard</h1>
+
+        <div class="grid-3">
+
+            <div class="card">
+                <h3>Today's Labs</h3>
+                <p style="font-size:32px;font-weight:bold;">12</p>
+            </div>
+
+            <div class="card">
+                <h3>Pending Requests</h3>
+                <p style="font-size:32px;font-weight:bold;">5</p>
+            </div>
+
+            <div class="card">
+                <h3>Equipment Issues</h3>
+                <p style="font-size:32px;font-weight:bold;">2</p>
+            </div>
+
+        </div>
+
+        <div class="card">
+
+            <h3>Today's Schedule</h3>
+
+            <table>
+                <tr>
+                    <th>Lab</th>
+                    <th>Time</th>
+                    <th>Faculty</th>
+                </tr>
+
+                <tr>
+                    <td>Lab 407A</td>
+                    <td>09:00 - 11:00</td>
+                    <td>Dr. Smith</td>
+                </tr>
+
+                <tr>
+                    <td>Lab 408A</td>
+                    <td>11:00 - 01:00</td>
+                    <td>Dr. Brown</td>
+                </tr>
+
+                <tr>
+                    <td>Lab 409A</td>
+                    <td>02:00 - 04:00</td>
+                    <td>Dr. Patel</td>
+                </tr>
+            </table>
+
+        </div>
+
+    </div>
+
+</div>
+
+<script src="../assets/js/app.js"></script>
+</body>
+</html>

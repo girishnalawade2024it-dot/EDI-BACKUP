@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Booking Requests</title>
+    <link rel="stylesheet" href="../assets/css/style.css" />
+</head>
+<body>
+
+<div class="container">
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <div class="logo">🧪 Lab Assistant</div>
+
+        <nav class="nav">
+            <a href="dashboard.html">Dashboard</a>
+            <a href="schedule.html">Daily Schedule</a>
+            <a href="requests.html" class="active">Requests</a>
+            <a href="inventory.html">Inventory</a>
+            <a href="profile.html">Profile</a>
+            <a href="../login.html">Logout</a>
+        </nav>
+    </aside>
+
+    <!-- Main Content -->
+    <div class="main-content">
+
+        <div class="topbar">
+            <h2>Booking Requests</h2>
+        </div>
+
+        <div class="card">
+
+            <table>
+                <tr>
+                    <th>Request ID</th>
+                    <th>Faculty</th>
+                    <th>Lab</th>
+                    <th>Time</th>
+                    <th>Status</th>
+                </tr>
+
+                <tr>
+                    <td>REQ101</td>
+                    <td>Dr. Smith</td>
+                    <td>Lab 407A</td>
+                    <td>09:00 - 11:00</td>
+                    <td><span class="status pending">Pending</span></td>
+                </tr>
+
+                <tr>
+                    <td>REQ102</td>
+                    <td>Dr. Brown</td>
+                    <td>Lab 408A</td>
+                    <td>11:00 - 01:00</td>
+                    <td><span class="status pending">Pending</span></td>
+                </tr>
+
+                <tr>
+                    <td>REQ103</td>
+                    <td>Dr. Patel</td>
+                    <td>Lab 409A</td>
+                    <td>02:00 - 04:00</td>
+                    <td><span class="status available">Approved</span></td>
+                </tr>
+
+            </table>
+
+        </div>
+
+    </div>
+
+</div>
+
+<script src="../assets/js/app.js"></script>
+</body>
+</html>

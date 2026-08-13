@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Booking History</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body>
+<div class="container">
+    <aside class="sidebar">
+        <div class="logo">Lab Booking Portal</div>
+        <nav class="nav">
+            <a href="dashboard.html">Dashboard</a>
+            <a href="resources.html">Book Resource</a>
+            <a href="history.html" class="active">Booking History</a>
+            <a href="profile.html">Profile</a>
+            <a href="login.html">Logout</a>
+        </nav>
+    </aside>
+
+    <main class="main">
+        <div class="topbar">
+            <h2>Booking History</h2>
+        </div>
+
+        <div class="card">
+            <table>
+                <tr>
+                    <th>Booking ID</th>
+                    <th>Resource</th>
+                    <th>Date</th>
+                    <th>Time</th>
+                    <th>Status</th>
+                </tr>
+
+                <tr>
+                    <td>B001</td>
+                    <td>407-A</td>
+                    <td>15 August 2026</td>
+                    <td>09:15 - 10:15</td>
+                    <td><span class="status pending">Pending</span></td>
+                </tr>
+
+                <tr>
+                    <td>B002</td>
+                    <td>407-B</td>
+                    <td>10 August 2026</td>
+                    <td>11:45 - 12:45</td>
+                    <td><span class="status available">Approved</span></td>
+                </tr>
+
+                <tr>
+                    <td>B003</td>
+                    <td>408-A</td>
+                    <td>05 August 2026</td>
+                    <td>02:00 - 03:00</td>
+                    <td><span class="status booked">Rejected</span></td>
+                </tr>
+            </table>
+        </div>
+    </main>
+</div>
+<script src="../assets/js/app.js"></script>
+</body>
+</html>

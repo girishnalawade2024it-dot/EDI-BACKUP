@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Resources</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body>
+
+<div class="container">
+
+<aside class="sidebar">
+<div class="logo">🛠️ Admin Panel</div>
+
+<nav class="nav">
+<a href="dashboard.html">Dashboard</a>
+<a href="users.html">Users</a>
+<a href="labs.html">Laboratories</a>
+<a href="classrooms.html">Classrooms</a>
+<a href="resources.html" class="active">Resources</a>
+<a href="conflicts.html">Conflicts</a>
+<a href="reports.html">Reports</a>
+<a href="profile.html">Profile</a>
+<a href="../login.html">Logout</a>
+</nav>
+</aside>
+
+<main class="main">
+
+<div class="topbar">
+<h2>Resource Management</h2>
+<button class="btn">+ Add Resource</button>
+</div>
+
+<div class="card">
+
+<table>
+<tr>
+<th>Resource</th>
+<th>Type</th>
+<th>Status</th>
+</tr>
+
+<tr>
+<td>Projector</td>
+<td>Equipment</td>
+<td><span class="status available">Available</span></td>
+</tr>
+
+<tr>
+<td>3D Printer</td>
+<td>Lab Equipment</td>
+<td><span class="status booked">In Use</span></td>
+</tr>
+
+<tr>
+<td>VR Kit</td>
+<td>Lab Equipment</td>
+<td><span class="status pending">Maintenance</span></td>
+</tr>
+
+</table>
+
+</div>
+
+</main>
+</div>
+
+<script src="../assets/js/app.js"></script>
+</body>
+</html>
