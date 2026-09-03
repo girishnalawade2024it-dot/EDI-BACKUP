@@ -11,7 +11,6 @@
 CREATE TABLE roles (
     role_id SERIAL PRIMARY KEY,
     role_name VARCHAR(50) NOT NULL,
-    priority_rank INTEGER NOT NULL,
     can_override BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -27,7 +26,6 @@ CREATE TABLE users (
     name VARCHAR(100) NOT NULL,
     email VARCHAR(150) NOT NULL UNIQUE,
     password_hash TEXT NOT NULL,
-    is_active BOOLEAN NOT NULL DEFAULT TRUE,
     last_login_at TIMESTAMP,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -46,7 +44,6 @@ CREATE TABLE resources (
     room_code VARCHAR(50) NOT NULL,
     resource_type VARCHAR(50) NOT NULL,
     block VARCHAR(50),
-    has_machines BOOLEAN NOT NULL DEFAULT FALSE,
     capacity INTEGER,
     notes TEXT,
     status VARCHAR(30) NOT NULL,
@@ -68,7 +65,6 @@ CREATE TABLE bookings (
     end_at TIMESTAMP NOT NULL,
     purpose TEXT,
     headcount INTEGER,
-    requires_machines BOOLEAN NOT NULL DEFAULT FALSE,
     status VARCHAR(30) NOT NULL,
     approved_by INTEGER,
     decision_reason TEXT,
@@ -98,7 +94,6 @@ CREATE TABLE audit_logs (
     audit_id SERIAL PRIMARY KEY,
     event_type VARCHAR(50) NOT NULL,
     actor_user_id INTEGER NOT NULL,
-    actor_role VARCHAR(50),
     target_entity_type VARCHAR(50),
     target_entity_id INTEGER,
     booking_id INTEGER,
