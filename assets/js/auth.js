@@ -31,7 +31,7 @@ export function clearSession() {
 }
 
 // ── Role → default dashboard path (from root) ────────────────
-const ROLE_DASHBOARDS = {
+export const ROLE_DASHBOARDS = {
     'Faculty':       'faculty/dashboard.html',
     'Lab Assistant': 'assistant/dashboard.html',
     'Admin':         'admin/dashboard.html',

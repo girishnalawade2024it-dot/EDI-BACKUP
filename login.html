@@ -103,23 +103,31 @@ async function doLogin() {
     btn.disabled       = true;
     loadEl.style.display = 'block';
 
-    const result = await login(email);
+    try {
+        const result = await login(email);
 
-    loadEl.style.display = 'none';
-    btn.disabled         = false;
+        loadEl.style.display = 'none';
+        btn.disabled         = false;
 
-    if (!result.success) {
-        errEl.textContent   = result.message;
+        if (!result.success) {
+            errEl.textContent   = result.message;
+            errEl.style.display = 'block';
+            return;
+        }
+
+        const map = {
+            'Faculty':       'faculty/dashboard.html',
+            'Lab Assistant': 'assistant/dashboard.html',
+            'Admin':         'admin/dashboard.html',
+        };
+        window.location.replace(map[result.session.role] || 'login.html');
+    } catch (err) {
+        console.error('Login error:', err);
+        loadEl.style.display = 'none';
+        btn.disabled         = false;
+        errEl.textContent   = 'Login failed: ' + (err.message || err);
         errEl.style.display = 'block';
-        return;
     }
-
-    const map = {
-        'Faculty':       'faculty/dashboard.html',
-        'Lab Assistant': 'assistant/dashboard.html',
-        'Admin':         'admin/dashboard.html',
-    };
-    window.location.replace(map[result.session.role] || 'login.html');
 }
 
 document.getElementById('login-btn').addEventListener('click', doLogin);
