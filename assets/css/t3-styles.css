@@ -1,0 +1,370 @@
+/* ============================================================
+   Team 3 — Scoped Styles (t3-styles.css)
+   Owner: Girish (Team 3)
+   All class names are prefixed with .t3- to avoid any
+   collision with existing style.css classes.
+   DO NOT modify style.css — add only to this file.
+============================================================ */
+
+/* -------------------------------------------------------
+   NOTIFICATION BELL
+------------------------------------------------------- */
+.t3-notif-wrapper {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+}
+
+.t3-notif-bell {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 22px;
+    padding: 6px 10px;
+    border-radius: 10px;
+    position: relative;
+    transition: background 0.2s;
+    line-height: 1;
+}
+
+.t3-notif-bell:hover {
+    background: rgba(37, 99, 235, 0.08);
+}
+
+.t3-notif-badge {
+    position: absolute;
+    top: 2px;
+    right: 4px;
+    background: #ef4444;
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    border-radius: 999px;
+    min-width: 16px;
+    height: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 4px;
+    line-height: 1;
+}
+
+.t3-notif-badge.t3-hidden {
+    display: none;
+}
+
+.t3-notif-panel {
+    position: absolute;
+    top: calc(100% + 10px);
+    right: 0;
+    width: 360px;
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.14);
+    z-index: 1000;
+    overflow: hidden;
+    display: none;
+    border: 1px solid #e5e7eb;
+}
+
+.t3-notif-panel.t3-open {
+    display: block;
+}
+
+.t3-notif-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 18px;
+    border-bottom: 1px solid #f3f4f6;
+    background: #f8fafc;
+}
+
+.t3-notif-header h4 {
+    font-size: 14px;
+    font-weight: 700;
+    color: #111827;
+    margin: 0;
+}
+
+.t3-notif-mark-all {
+    font-size: 12px;
+    color: #2563eb;
+    cursor: pointer;
+    background: none;
+    border: none;
+    font-weight: 600;
+    padding: 0;
+}
+
+.t3-notif-mark-all:hover {
+    text-decoration: underline;
+}
+
+.t3-notif-list {
+    max-height: 380px;
+    overflow-y: auto;
+}
+
+.t3-notif-item {
+    padding: 14px 18px;
+    border-bottom: 1px solid #f3f4f6;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.t3-notif-item:last-child {
+    border-bottom: none;
+}
+
+.t3-notif-item:hover {
+    background: #f8fafc;
+}
+
+.t3-notif-unread {
+    background: #eff6ff;
+    border-left: 3px solid #2563eb;
+}
+
+.t3-notif-unread:hover {
+    background: #dbeafe;
+}
+
+.t3-notif-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #111827;
+    margin-bottom: 3px;
+}
+
+.t3-notif-msg {
+    font-size: 12px;
+    color: #6b7280;
+    line-height: 1.45;
+}
+
+.t3-notif-time {
+    font-size: 11px;
+    color: #9ca3af;
+    margin-top: 5px;
+}
+
+.t3-notif-empty {
+    padding: 32px 18px;
+    text-align: center;
+    color: #9ca3af;
+    font-size: 13px;
+}
+
+/* -------------------------------------------------------
+   FILTER BAR
+------------------------------------------------------- */
+.t3-filter-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: flex-end;
+    padding: 18px 22px;
+    background: #f8fafc;
+    border-radius: 14px;
+    border: 1px solid #e5e7eb;
+    margin-bottom: 22px;
+}
+
+.t3-filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    flex: 1;
+    min-width: 140px;
+}
+
+.t3-filter-group label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #374151;
+}
+
+.t3-filter-group input,
+.t3-filter-group select {
+    padding: 9px 11px;
+    border: 1px solid #d1d5db;
+    border-radius: 10px;
+    font-size: 13px;
+    background: #fff;
+    width: 100%;
+}
+
+.t3-filter-actions {
+    display: flex;
+    gap: 8px;
+    align-items: flex-end;
+    padding-bottom: 0;
+    flex-shrink: 0;
+}
+
+/* -------------------------------------------------------
+   EXPORT BUTTON
+------------------------------------------------------- */
+.t3-export-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #16a34a;
+    color: #fff;
+    border: none;
+    padding: 9px 16px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    transition: background 0.2s;
+    text-decoration: none;
+}
+
+.t3-export-btn:hover {
+    background: #15803d;
+}
+
+/* -------------------------------------------------------
+   STAT CARD LOADING SHIMMER
+------------------------------------------------------- */
+.t3-stat-loading {
+    display: inline-block;
+    width: 60px;
+    height: 36px;
+    background: linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%);
+    background-size: 200% 100%;
+    animation: t3-shimmer 1.4s infinite;
+    border-radius: 8px;
+    vertical-align: middle;
+}
+
+@keyframes t3-shimmer {
+    0%   { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+/* -------------------------------------------------------
+   SCROLLABLE TABLE WRAPPER
+------------------------------------------------------- */
+.t3-table-wrap {
+    overflow-x: auto;
+    border-radius: 12px;
+    border: 1px solid #e5e7eb;
+    margin-top: 14px;
+}
+
+.t3-table-wrap table {
+    border-radius: 0;
+    border: none;
+    min-width: 600px;
+}
+
+/* -------------------------------------------------------
+   REPORT SECTION HEADER
+------------------------------------------------------- */
+.t3-section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.t3-section-header h3 {
+    margin: 0;
+    font-size: 16px;
+}
+
+/* -------------------------------------------------------
+   LOAD MORE BUTTON
+------------------------------------------------------- */
+.t3-load-more {
+    display: block;
+    width: 100%;
+    text-align: center;
+    padding: 12px;
+    background: #f8fafc;
+    border: 1px dashed #d1d5db;
+    border-radius: 10px;
+    color: #2563eb;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 10px;
+    transition: background 0.2s;
+}
+
+.t3-load-more:hover {
+    background: #eff6ff;
+}
+
+/* -------------------------------------------------------
+   STATUS BADGE EXTENSION (event types)
+------------------------------------------------------- */
+.t3-badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.t3-badge-approved   { background: #dcfce7; color: #15803d; }
+.t3-badge-pending    { background: #fef9c3; color: #854d0e; }
+.t3-badge-denied     { background: #fee2e2; color: #991b1b; }
+.t3-badge-cancelled  { background: #f3f4f6; color: #374151; }
+.t3-badge-preempted  { background: #fce7f3; color: #9d174d; }
+.t3-badge-completed  { background: #dbeafe; color: #1e40af; }
+.t3-badge-default    { background: #f3f4f6; color: #374151; }
+
+/* -------------------------------------------------------
+   TOPBAR EXTRAS (notification area in topbar)
+------------------------------------------------------- */
+.t3-topbar-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+/* -------------------------------------------------------
+   ERROR / EMPTY STATES
+------------------------------------------------------- */
+.t3-empty {
+    padding: 28px 16px;
+    text-align: center;
+    color: #9ca3af;
+    font-size: 14px;
+}
+
+.t3-error {
+    padding: 14px 16px;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: 10px;
+    color: #991b1b;
+    font-size: 13px;
+    margin-bottom: 16px;
+}
+
+/* -------------------------------------------------------
+   RESPONSIVE
+------------------------------------------------------- */
+@media (max-width: 768px) {
+    .t3-notif-panel {
+        width: 300px;
+        right: -60px;
+    }
+
+    .t3-filter-bar {
+        flex-direction: column;
+    }
+
+    .t3-filter-group {
+        min-width: unset;
+        width: 100%;
+    }
+}

@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Admin Dashboard</title>
 <link rel="stylesheet" href="../assets/css/style.css">
+<!-- Team 3: scoped styles (t3- prefix, no conflicts with style.css) -->
+<link rel="stylesheet" href="../assets/css/t3-styles.css">
 </head>
 <body>
 
@@ -19,7 +21,7 @@
 <a href="labs.html">Laboratories</a>
 <a href="classrooms.html">Classrooms</a>
 <a href="resources.html">Resources</a>
-<a href="conflicts.html">Conflicts</a>
+<a href="conflicts.html">Audit Log</a>
 <a href="reports.html">Reports</a>
 <a href="profile.html">Profile</a>
 <a href="../login.html">Logout</a>
@@ -30,31 +32,72 @@
 
 <div class="topbar">
 <h2>Admin Dashboard</h2>
+<!-- t3-topbar-right and notification bell injected here by t3-notifications.js -->
 <div>Administrator</div>
 </div>
 
+<!-- ── Stat Cards (IDs wired to t3-dashboard.js) ── -->
 <div class="grid-3">
 
 <div class="card">
 <h3>Total Users</h3>
-<p style="font-size:32px;font-weight:bold;">120</p>
+<div id="stat-users"><span class="t3-stat-loading"></span></div>
 </div>
 
 <div class="card">
-<h3>Total Labs</h3>
-<p style="font-size:32px;font-weight:bold;">15</p>
+<h3>Active Labs</h3>
+<div id="stat-labs"><span class="t3-stat-loading"></span></div>
 </div>
 
 <div class="card">
-<h3>Today's Bookings</h3>
-<p style="font-size:32px;font-weight:bold;">34</p>
+<h3>Active Classrooms</h3>
+<div id="stat-classrooms"><span class="t3-stat-loading"></span></div>
+</div>
+
+<div class="card">
+<h3>Approved Bookings</h3>
+<div id="stat-bookings"><span class="t3-stat-loading"></span></div>
+</div>
+
+<div class="card">
+<h3>Pending Requests</h3>
+<div id="stat-pending"><span class="t3-stat-loading"></span></div>
+</div>
+
+<div class="card">
+<h3>Total Bookings</h3>
+<div id="stat-total-bookings"><span class="t3-stat-loading"></span></div>
 </div>
 
 </div>
 
+<!-- ── System Overview ── -->
 <div class="card">
 <h3>System Overview</h3>
-<p>Monitor users, laboratories, classrooms, resources, conflicts, and reports from this dashboard.</p>
+<p>Monitor users, laboratories, classrooms, resources, audit logs, and reports from this dashboard.</p>
+</div>
+
+<!-- ── Recent Activity (Team 3) ── -->
+<div class="card">
+<div class="t3-section-header">
+    <h3>Recent Activity</h3>
+    <a href="conflicts.html" style="font-size:13px;color:#2563eb;">View full audit log →</a>
+</div>
+<div class="t3-table-wrap">
+<table>
+    <thead>
+        <tr>
+            <th>Actor</th>
+            <th>Event</th>
+            <th>New State</th>
+            <th>Timestamp</th>
+        </tr>
+    </thead>
+    <tbody id="t3-recent-tbody">
+        <tr><td colspan="4"><span class="t3-stat-loading" style="display:block;margin:12px auto;"></span></td></tr>
+    </tbody>
+</table>
+</div>
 </div>
 
 </main>
@@ -62,5 +105,8 @@
 </div>
 
 <script src="../assets/js/app.js"></script>
+<!-- Team 3 modules (type=module uses ES module imports) -->
+<script type="module" src="../assets/js/t3-notifications.js"></script>
+<script type="module" src="../assets/js/t3-dashboard.js"></script>
 </body>
 </html>
