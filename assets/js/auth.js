@@ -3,8 +3,17 @@
 // SRS FR-1.1 – FR-1.6
 // ============================================================
 
-import { supabase }   from './supabase-client.js';
-import { CONFIG }     from './config.js';
+import { supabase, isConfigured } from './supabase-client.js';
+import { CONFIG }                     from './config.js';
+
+const SEED_USERS = [
+    { user_id: 1, name: 'Dr. Anjali Deshmukh', email: 'anjali.deshmukh@college.edu', role: 'Faculty', role_id: 1, can_override: false },
+    { user_id: 2, name: 'Prof. Rahul Kulkarni', email: 'rahul.kulkarni@college.edu', role: 'Faculty', role_id: 1, can_override: false },
+    { user_id: 3, name: 'Amit Patil', email: 'amit.patil@college.edu', role: 'Lab Assistant', role_id: 2, can_override: false },
+    { user_id: 4, name: 'Sneha Joshi', email: 'sneha.joshi@college.edu', role: 'Lab Assistant', role_id: 2, can_override: false },
+    { user_id: 4, name: 'Rahul Verma', email: 'rahul.verma@college.edu', role: 'Lab Assistant', role_id: 2, can_override: false },
+    { user_id: 5, name: 'Admin User', email: 'admin@college.edu', role: 'Admin', role_id: 3, can_override: true },
+];
 
 // ── Session helpers ──────────────────────────────────────────
 export function getSession() {
@@ -75,35 +84,58 @@ export async function login(email /*, password */) {
         return { success: false, message: 'Please enter your email address.' };
     }
 
-    const { data, error } = await supabase
-        .from('users')
-        .select('user_id, name, email, role_id, roles ( role_name, can_override )')
-        .eq('email', email.trim().toLowerCase())
-        .single();
+    const normEmail = email.trim().toLowerCase();
 
-    if (error || !data) {
-        return { success: false, message: 'Email address not found in the system.' };
+    // 1. Try real Supabase lookup if configured
+    if (isConfigured) {
+        try {
+            const { data, error } = await supabase
+                .from('users')
+                .select('user_id, name, email, role_id, roles ( role_name, can_override )')
+                .eq('email', normEmail)
+                .single();
+
+            if (!error && data) {
+                const session = {
+                    userId:       data.user_id,
+                    email:        data.email,
+                    name:         data.name,
+                    role:         data.roles?.role_name || 'Faculty',
+                    role_id:      data.role_id,
+                    can_override: data.roles?.can_override || false,
+                };
+
+                setSession(session);
+
+                supabase
+                    .from('users')
+                    .update({ last_login_at: new Date().toISOString() })
+                    .eq('user_id', data.user_id)
+                    .then(() => {});
+
+                return { success: true, session };
+            }
+        } catch (e) {
+            console.warn('[Auth] Supabase lookup error, falling back to seed user:', e);
+        }
     }
 
-    const session = {
-        userId:       data.user_id,
-        email:        data.email,
-        name:         data.name,
-        role:         data.roles.role_name,
-        role_id:      data.role_id,
-        can_override: data.roles.can_override,
-    };
+    // 2. Fallback to seed test users (demo mode or offline)
+    const seedUser = SEED_USERS.find(u => u.email.toLowerCase() === normEmail);
+    if (seedUser) {
+        const session = {
+            userId:       seedUser.user_id,
+            email:        seedUser.email,
+            name:         seedUser.name,
+            role:         seedUser.role,
+            role_id:      seedUser.role_id,
+            can_override: seedUser.can_override,
+        };
+        setSession(session);
+        return { success: true, session };
+    }
 
-    setSession(session);
-
-    // Update last_login_at (best-effort, ignore errors)
-    supabase
-        .from('users')
-        .update({ last_login_at: new Date().toISOString() })
-        .eq('user_id', data.user_id)
-        .then(() => {});
-
-    return { success: true, session };
+    return { success: false, message: 'Email address not found in the system. Use one of the demo credentials below.' };
 }
 
 // ── Logout ──────────────────────────────────────────────────

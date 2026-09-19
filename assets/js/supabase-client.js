@@ -15,4 +15,8 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 const SUPABASE_URL      = 'YOUR_SUPABASE_URL';       // TODO: fill in
 const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';  // TODO: fill in
 
-export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+export const isConfigured = Boolean(SUPABASE_URL && SUPABASE_URL !== 'YOUR_SUPABASE_URL' && !SUPABASE_URL.includes('YOUR_'));
+const safeUrl = isConfigured ? SUPABASE_URL : 'https://placeholder.supabase.co';
+const safeKey = isConfigured ? SUPABASE_ANON_KEY : 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.dummy';
+
+export const supabase = createClient(safeUrl, safeKey);
