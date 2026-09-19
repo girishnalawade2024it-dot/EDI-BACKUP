@@ -110,5 +110,10 @@
 <!-- Team 3 modules -->
 <script type="module" src="../assets/js/t3-notifications.js"></script>
 <script type="module" src="../assets/js/t3-auditlog.js"></script>
+<script type="module">
+import { requireAuth, populateTopbar } from '../assets/js/auth.js';
+requireAuth('Admin');
+populateTopbar();
+</script>
 </body>
 </html>

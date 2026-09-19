@@ -3,30 +3,15 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Login - Lab Booking Portal</title>
+<title>Login — Lab & Classroom Booking Portal</title>
 <link rel="stylesheet" href="assets/css/style.css">
+<link rel="stylesheet" href="assets/css/t3-styles.css">
 </head>
-<script>
-function loginUser() {
-
-    const role = document.getElementById('role').value;
-
-    if (role === 'faculty') {
-        window.location.href = 'faculty/dashboard.html';
-    }
-    else if (role === 'assistant') {
-        window.location.href = 'assistant/dashboard.html';
-    }
-    else if (role === 'admin') {
-        window.location.href = 'admin/dashboard.html';
-    }
-}
-</script>
 <body>
 <div class="login-page">
     <div class="login-left">
         <img src="https://images.unsplash.com/photo-1562774053-701939374585?q=80&w=1200&auto=format&fit=crop" alt="Campus">
-        <h1>Lab & Classroom Booking Portal</h1>
+        <h1>Lab &amp; Classroom Booking Portal</h1>
         <p>Smartly book laboratories and classrooms with ease.</p>
     </div>
 
@@ -35,34 +20,115 @@ function loginUser() {
             <h2>Welcome Back!</h2>
             <p style="margin-bottom:20px;color:#6b7280;">Sign in to continue</p>
 
+            <div id="login-error" class="t3-error" style="display:none;"></div>
+
             <div class="form-group">
-                <label>Email</label>
-                <input type="email" placeholder="Enter your email">
+                <label for="email">Email</label>
+                <input type="email" id="email" placeholder="Enter your email" autocomplete="email">
             </div>
 
             <div class="form-group">
-                <label>Password</label>
-                <input type="password" placeholder="Enter your password">
+                <label for="password">Password</label>
+                <input type="password" id="password" placeholder="Enter your password" autocomplete="current-password">
+                <small style="color:#9ca3af;font-size:11px;">Demo: any password works with a valid email.</small>
             </div>
 
-            <div class="form-group">
-                <label>Login As</label>
-                <select id="role">
-                    <option value="faculty">Faculty</option>
-                    <option value="assistant">Lab Assistant</option>
-                    <option value="admin">Admin</option>
-                </select>
-            </div>
-
-            <button type="button" class="btn" style="width:100%;" onclick="loginUser()">
+            <button type="button" class="btn" id="login-btn" style="width:100%;">
                 Login
             </button>
 
-            <p style="text-align:center;margin-top:16px;font-size:14px;">
-                Don't have an account? <a href="#" style="color:#2563eb;">Register</a>
-            </p>
+            <div id="login-loading" style="display:none;text-align:center;margin-top:14px;">
+                <span class="t3-stat-loading" style="display:inline-block;width:120px;"></span>
+            </div>
+
+            <div style="margin-top:20px;padding-top:16px;border-top:1px solid #e5e7eb;">
+                <p style="font-size:13px;color:#6b7280;margin-bottom:8px;">Demo credentials:</p>
+                <table style="font-size:12px;width:100%;border-collapse:collapse;">
+                    <tr style="background:#f8fafc;">
+                        <th style="padding:6px 8px;text-align:left;border:1px solid #e5e7eb;">Role</th>
+                        <th style="padding:6px 8px;text-align:left;border:1px solid #e5e7eb;">Email</th>
+                    </tr>
+                    <tr>
+                        <td style="padding:6px 8px;border:1px solid #e5e7eb;">Faculty</td>
+                        <td style="padding:6px 8px;border:1px solid #e5e7eb;cursor:pointer;color:#2563eb;" onclick="fillEmail('anjali.deshmukh@college.edu')">anjali.deshmukh@college.edu</td>
+                    </tr>
+                    <tr>
+                        <td style="padding:6px 8px;border:1px solid #e5e7eb;">Lab Assistant</td>
+                        <td style="padding:6px 8px;border:1px solid #e5e7eb;cursor:pointer;color:#2563eb;" onclick="fillEmail('amit.patil@college.edu')">amit.patil@college.edu</td>
+                    </tr>
+                    <tr>
+                        <td style="padding:6px 8px;border:1px solid #e5e7eb;">Admin</td>
+                        <td style="padding:6px 8px;border:1px solid #e5e7eb;cursor:pointer;color:#2563eb;" onclick="fillEmail('admin@college.edu')">admin@college.edu</td>
+                    </tr>
+                </table>
+            </div>
         </div>
     </div>
 </div>
+
+<script>
+function fillEmail(email) {
+    document.getElementById('email').value = email;
+    document.getElementById('password').focus();
+}
+</script>
+<script type="module">
+import { login, getSession, ROLE_DASHBOARDS } from './assets/js/auth.js';
+
+// If already logged in, redirect
+const existing = JSON.parse(localStorage.getItem('edi_portal_session') || 'null');
+if (existing) {
+    const map = {
+        'Faculty':       'faculty/dashboard.html',
+        'Lab Assistant': 'assistant/dashboard.html',
+        'Admin':         'admin/dashboard.html',
+    };
+    window.location.replace(map[existing.role] || 'login.html');
+}
+
+async function doLogin() {
+    const email    = document.getElementById('email').value.trim();
+    const errEl    = document.getElementById('login-error');
+    const loadEl   = document.getElementById('login-loading');
+    const btn      = document.getElementById('login-btn');
+
+    errEl.style.display = 'none';
+
+    if (!email) {
+        errEl.textContent    = 'Please enter your email address.';
+        errEl.style.display  = 'block';
+        return;
+    }
+
+    btn.disabled       = true;
+    loadEl.style.display = 'block';
+
+    const result = await login(email);
+
+    loadEl.style.display = 'none';
+    btn.disabled         = false;
+
+    if (!result.success) {
+        errEl.textContent   = result.message;
+        errEl.style.display = 'block';
+        return;
+    }
+
+    const map = {
+        'Faculty':       'faculty/dashboard.html',
+        'Lab Assistant': 'assistant/dashboard.html',
+        'Admin':         'admin/dashboard.html',
+    };
+    window.location.replace(map[result.session.role] || 'login.html');
+}
+
+document.getElementById('login-btn').addEventListener('click', doLogin);
+document.getElementById('password').addEventListener('keydown', e => {
+    if (e.key === 'Enter') doLogin();
+});
+document.getElementById('email').addEventListener('keydown', e => {
+    if (e.key === 'Enter') doLogin();
+});
+</script>
 </body>
 </html>

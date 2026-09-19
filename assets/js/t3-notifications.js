@@ -6,12 +6,12 @@
 // ============================================================
 
 import { supabase } from './supabase-client.js';
+import { getSession } from './auth.js';
 
-// ── Config ──────────────────────────────────────────────────
-// This is the seeded admin user_id. Once Team 1 wires real
-// auth, replace with: supabase.auth.getUser() → user.id
-// mapped against the users table.
-const ADMIN_USER_ID = 5;
+function getEffectiveUserId() {
+    const session = getSession();
+    return session ? session.userId : 5;
+}
 
 // ── Helpers ─────────────────────────────────────────────────
 function timeAgo(dateStr) {
@@ -98,10 +98,11 @@ async function markRead(notifId, itemEl, badgeEl) {
 
 // ── Mark all as read ─────────────────────────────────────────
 async function markAllRead(badgeEl, listEl) {
+    const userId = getEffectiveUserId();
     const { error } = await supabase
         .from('notifications')
         .update({ is_read: true, read_at: new Date().toISOString() })
-        .eq('user_id', ADMIN_USER_ID)
+        .eq('user_id', userId)
         .eq('is_read', false);
 
     if (error) {
@@ -174,10 +175,11 @@ async function initNotifications() {
     markAllBtn.addEventListener('click', () => markAllRead(badge, listEl));
 
     // Fetch notifications
+    const userId = getEffectiveUserId();
     const { data, error } = await supabase
         .from('notifications')
         .select('notification_id, user_id, booking_id, type, title, message, is_read, read_at, created_at')
-        .eq('user_id', ADMIN_USER_ID)
+        .eq('user_id', userId)
         .order('created_at', { ascending: false })
         .limit(30);
 

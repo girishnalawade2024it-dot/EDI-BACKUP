@@ -1,89 +1,174 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Lab Assistant Dashboard</title>
-    <link rel="stylesheet" href="../assets/css/style.css" />
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lab Assistant Dashboard — Booking Portal</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+<link rel="stylesheet" href="../assets/css/t3-styles.css">
 </head>
 <body>
-
 <div class="container">
-
-    <!-- Sidebar -->
     <aside class="sidebar">
         <div class="logo">🧪 Lab Assistant</div>
-
         <nav class="nav">
             <a href="dashboard.html" class="active">Dashboard</a>
             <a href="schedule.html">Daily Schedule</a>
-            <a href="requests.html">Requests</a>
-            <a href="inventory.html">Inventory</a>
+            <a href="requests.html">Maintenance Requests</a>
+            <a href="inventory.html">Lab Status</a>
             <a href="profile.html">Profile</a>
             <a href="../login.html">Logout</a>
         </nav>
     </aside>
 
-    <!-- Main Content -->
-    <div class="main-content">
+    <main class="main">
+        <div class="topbar">
+            <h2>Lab Assistant Dashboard</h2>
+            <div id="topbar-user">Lab Assistant</div>
+        </div>
 
-        <h1>Lab Assistant Dashboard</h1>
-
+        <!-- Stat Cards -->
         <div class="grid-3">
-
             <div class="card">
-                <h3>Today's Labs</h3>
-                <p style="font-size:32px;font-weight:bold;">12</p>
+                <h3>Active Laboratories</h3>
+                <div id="stat-active-labs" style="font-size:28px;font-weight:bold;color:#16a34a;"><span class="t3-stat-loading"></span></div>
             </div>
-
             <div class="card">
-                <h3>Pending Requests</h3>
-                <p style="font-size:32px;font-weight:bold;">5</p>
+                <h3>Today's Lab Sessions</h3>
+                <div id="stat-today-sessions" style="font-size:28px;font-weight:bold;color:#2563eb;"><span class="t3-stat-loading"></span></div>
             </div>
-
             <div class="card">
-                <h3>Equipment Issues</h3>
-                <p style="font-size:32px;font-weight:bold;">2</p>
+                <h3>My Maintenance Requests</h3>
+                <div id="stat-maint-requests" style="font-size:28px;font-weight:bold;color:#d97706;"><span class="t3-stat-loading"></span></div>
             </div>
-
         </div>
 
+        <!-- Today's Schedule Table -->
         <div class="card">
-
-            <h3>Today's Schedule</h3>
-
-            <table>
-                <tr>
-                    <th>Lab</th>
-                    <th>Time</th>
-                    <th>Faculty</th>
-                </tr>
-
-                <tr>
-                    <td>Lab 407A</td>
-                    <td>09:00 - 11:00</td>
-                    <td>Dr. Smith</td>
-                </tr>
-
-                <tr>
-                    <td>Lab 408A</td>
-                    <td>11:00 - 01:00</td>
-                    <td>Dr. Brown</td>
-                </tr>
-
-                <tr>
-                    <td>Lab 409A</td>
-                    <td>02:00 - 04:00</td>
-                    <td>Dr. Patel</td>
-                </tr>
-            </table>
-
+            <div class="t3-section-header">
+                <h3>🧪 Today's Laboratory Schedule</h3>
+                <a href="schedule.html" style="font-size:13px;color:#2563eb;">View full timetable →</a>
+            </div>
+            <div class="t3-table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Lab Room</th>
+                            <th>Time Window</th>
+                            <th>Faculty / Requester</th>
+                            <th>Booking Type</th>
+                            <th>Purpose</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="today-schedule-tbody">
+                        <tr><td colspan="6"><span class="t3-stat-loading" style="display:block;margin:16px auto;"></span></td></tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
 
-    </div>
-
+        <!-- Quick Actions -->
+        <div class="card">
+            <h3>Quick Actions</h3>
+            <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:12px;">
+                <a class="btn" href="requests.html">🛠️ Log Maintenance Request</a>
+                <a class="btn btn-secondary" href="inventory.html">🔬 Manage Lab Availability</a>
+                <a class="btn btn-secondary" href="schedule.html">📅 Full Schedule Calendar</a>
+                <a class="btn btn-secondary" href="profile.html">👤 My Profile</a>
+            </div>
+        </div>
+    </main>
 </div>
 
 <script src="../assets/js/app.js"></script>
+<script type="module" src="../assets/js/t3-notifications.js"></script>
+<script type="module">
+import { supabase } from '../assets/js/supabase-client.js';
+import { requireAuth, populateTopbar } from '../assets/js/auth.js';
+
+const session = requireAuth('Lab Assistant');
+if (session) {
+    populateTopbar();
+    loadDashboard();
+}
+
+async function loadDashboard() {
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const dayStart = `${todayStr}T00:00:00`;
+    const dayEnd   = `${todayStr}T23:59:59`;
+
+    // 1. Total active labs
+    const { count: labCount } = await supabase
+        .from('resources')
+        .select('*', { count: 'exact', head: true })
+        .eq('resource_type', 'Lab')
+        .eq('status', 'ACTIVE');
+    
+    document.getElementById('stat-active-labs').textContent = labCount ?? '0';
+
+    // 2. My maintenance requests count
+    const { count: reqCount } = await supabase
+        .from('bookings')
+        .select('*', { count: 'exact', head: true })
+        .eq('requested_by', session.userId)
+        .eq('booking_type', 'MAINTENANCE');
+
+    document.getElementById('stat-maint-requests').textContent = reqCount ?? '0';
+
+    // 3. Today's Lab Sessions
+    const { data: todayBookings, error } = await supabase
+        .from('bookings')
+        .select(`
+            booking_id, booking_type, status, start_at, end_at, purpose, headcount,
+            users!bookings_requested_by_fkey ( name, email ),
+            resources ( room_code, resource_type, block )
+        `)
+        .gte('start_at', dayStart)
+        .lte('end_at', dayEnd)
+        .order('start_at', { ascending: true });
+
+    const tbody = document.getElementById('today-schedule-tbody');
+
+    if (error) {
+        tbody.innerHTML = `<tr><td colspan="6" style="color:#dc2626;padding:16px;text-align:center;">Failed to load schedule: ${error.message}</td></tr>`;
+        return;
+    }
+
+    // Filter only labs
+    const labSessions = (todayBookings || []).filter(b => b.resources?.resource_type === 'Lab');
+    document.getElementById('stat-today-sessions').textContent = labSessions.length;
+
+    if (labSessions.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:24px;color:#6b7280;">No lab bookings scheduled for today.</td></tr>';
+        return;
+    }
+
+    const badgeCls = {
+        APPROVED:  't3-badge-approved',
+        PENDING:   't3-badge-pending',
+        DENIED:    't3-badge-denied',
+        CANCELLED: 't3-badge-cancelled',
+        PREEMPTED: 't3-badge-preempted',
+    };
+
+    tbody.innerHTML = labSessions.map(b => {
+        const start = new Date(b.start_at);
+        const end   = new Date(b.end_at);
+        const timeStr = `${start.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})} – ${end.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}`;
+
+        return `
+            <tr>
+                <td><strong>🔬 ${b.resources?.room_code || '—'}</strong> (${b.resources?.block || 'Main'})</td>
+                <td><strong>${timeStr}</strong></td>
+                <td>${b.users?.name || 'Unknown'}</td>
+                <td>${b.booking_type || 'ACADEMIC'}</td>
+                <td>${b.purpose || '—'}</td>
+                <td><span class="t3-badge ${badgeCls[b.status] || 't3-badge-default'}">${b.status}</span></td>
+            </tr>
+        `;
+    }).join('');
+}
+</script>
 </body>
 </html>

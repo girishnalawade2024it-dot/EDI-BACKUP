@@ -3,64 +3,205 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Booking History</title>
+<title>My Booking History — Faculty Portal</title>
 <link rel="stylesheet" href="../assets/css/style.css">
+<link rel="stylesheet" href="../assets/css/t3-styles.css">
 </head>
 <body>
 <div class="container">
     <aside class="sidebar">
-        <div class="logo">Lab Booking Portal</div>
+        <div class="logo">🎓 Faculty Portal</div>
         <nav class="nav">
             <a href="dashboard.html">Dashboard</a>
             <a href="resources.html">Book Resource</a>
             <a href="history.html" class="active">Booking History</a>
             <a href="profile.html">Profile</a>
-            <a href="login.html">Logout</a>
+            <a href="../login.html">Logout</a>
         </nav>
     </aside>
 
     <main class="main">
         <div class="topbar">
-            <h2>Booking History</h2>
+            <h2>My Booking History</h2>
+            <div id="topbar-user">Faculty Member</div>
         </div>
 
+        <!-- Filter Bar -->
         <div class="card">
-            <table>
-                <tr>
-                    <th>Booking ID</th>
-                    <th>Resource</th>
-                    <th>Date</th>
-                    <th>Time</th>
-                    <th>Status</th>
-                </tr>
+            <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center;">
+                <div style="flex:1;min-width:180px;">
+                    <label style="display:block;font-size:13px;font-weight:600;margin-bottom:4px;">Filter by Status</label>
+                    <select id="filter-status" style="width:100%;padding:8px;border:1px solid #d1d5db;border-radius:6px;">
+                        <option value="">All Statuses</option>
+                        <option value="APPROVED">Approved</option>
+                        <option value="PENDING">Pending</option>
+                        <option value="DENIED">Denied</option>
+                        <option value="CANCELLED">Cancelled</option>
+                        <option value="PREEMPTED">Preempted</option>
+                    </select>
+                </div>
+                <div style="flex:2;min-width:240px;">
+                    <label style="display:block;font-size:13px;font-weight:600;margin-bottom:4px;">Search Purpose / Resource</label>
+                    <input type="text" id="filter-search" placeholder="Search by purpose or room..." style="width:100%;padding:8px;border:1px solid #d1d5db;border-radius:6px;">
+                </div>
+                <div style="align-self:flex-end;">
+                    <a href="resources.html" class="btn">➕ New Booking</a>
+                </div>
+            </div>
+        </div>
 
-                <tr>
-                    <td>B001</td>
-                    <td>407-A</td>
-                    <td>15 August 2026</td>
-                    <td>09:15 - 10:15</td>
-                    <td><span class="status pending">Pending</span></td>
-                </tr>
-
-                <tr>
-                    <td>B002</td>
-                    <td>407-B</td>
-                    <td>10 August 2026</td>
-                    <td>11:45 - 12:45</td>
-                    <td><span class="status available">Approved</span></td>
-                </tr>
-
-                <tr>
-                    <td>B003</td>
-                    <td>408-A</td>
-                    <td>05 August 2026</td>
-                    <td>02:00 - 03:00</td>
-                    <td><span class="status booked">Rejected</span></td>
-                </tr>
-            </table>
+        <!-- Bookings Table -->
+        <div class="card">
+            <div class="t3-table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Ref #</th>
+                            <th>Resource</th>
+                            <th>Date & Time</th>
+                            <th>Type / Headcount</th>
+                            <th>Purpose</th>
+                            <th>Status</th>
+                            <th>Notes / Reason</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="history-tbody">
+                        <tr><td colspan="8"><span class="t3-stat-loading" style="display:block;margin:20px auto;"></span></td></tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
     </main>
 </div>
+
 <script src="../assets/js/app.js"></script>
+<script type="module" src="../assets/js/t3-notifications.js"></script>
+<script type="module">
+import { supabase } from '../assets/js/supabase-client.js';
+import { requireAuth, populateTopbar } from '../assets/js/auth.js';
+import { cancelBooking } from '../assets/js/booking-engine.js';
+
+const session = requireAuth('Faculty');
+if (session) {
+    populateTopbar();
+    loadHistory();
+}
+
+let allHistory = [];
+
+async function loadHistory() {
+    const tbody = document.getElementById('history-tbody');
+    tbody.innerHTML = '<tr><td colspan="8"><span class="t3-stat-loading" style="display:block;margin:20px auto;"></span></td></tr>';
+
+    const { data, error } = await supabase
+        .from('bookings')
+        .select(`
+            booking_id, booking_type, status, start_at, end_at,
+            purpose, headcount, decision_reason, decision_note,
+            created_at, resources ( room_code, resource_type, block )
+        `)
+        .eq('requested_by', session.userId)
+        .order('start_at', { ascending: false });
+
+    if (error) {
+        tbody.innerHTML = `<tr><td colspan="8" style="color:#dc2626;padding:20px;text-align:center;">Failed to load history: ${error.message}</td></tr>`;
+        return;
+    }
+
+    allHistory = data || [];
+    renderTable();
+
+    document.getElementById('filter-status').addEventListener('change', renderTable);
+    document.getElementById('filter-search').addEventListener('input', renderTable);
+}
+
+function renderTable() {
+    const statusFilter = document.getElementById('filter-status').value;
+    const searchFilter = document.getElementById('filter-search').value.toLowerCase().trim();
+    const tbody = document.getElementById('history-tbody');
+
+    const filtered = allHistory.filter(b => {
+        if (statusFilter && b.status !== statusFilter) return false;
+        if (searchFilter) {
+            const purpose = (b.purpose || '').toLowerCase();
+            const room = (b.resources?.room_code || '').toLowerCase();
+            if (!purpose.includes(searchFilter) && !room.includes(searchFilter)) return false;
+        }
+        return true;
+    });
+
+    if (filtered.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:24px;color:#6b7280;">No bookings match your selection.</td></tr>';
+        return;
+    }
+
+    const badgeCls = {
+        APPROVED:  't3-badge-approved',
+        PENDING:   't3-badge-pending',
+        DENIED:    't3-badge-denied',
+        CANCELLED: 't3-badge-cancelled',
+        PREEMPTED: 't3-badge-preempted',
+    };
+
+    const now = new Date();
+
+    tbody.innerHTML = filtered.map(b => {
+        const start = new Date(b.start_at);
+        const end   = new Date(b.end_at);
+        const dateStr = start.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+        const timeStr = `${start.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})} – ${end.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}`;
+
+        const isPast = end < now;
+        const canCancel = !isPast && (b.status === 'PENDING' || b.status === 'APPROVED');
+
+        let notesHtml = '—';
+        if (b.decision_reason) {
+            notesHtml = `<strong style="color:#b91c1c;">${b.decision_reason}</strong>`;
+            if (b.decision_note) notesHtml += `<br><span style="font-size:12px;color:#6b7280;">${b.decision_note}</span>`;
+        } else if (b.decision_note) {
+            notesHtml = `<span style="font-size:12px;color:#6b7280;">${b.decision_note}</span>`;
+        }
+
+        return `
+            <tr>
+                <td><strong>#BK-${b.booking_id}</strong></td>
+                <td>
+                    <strong>${b.resources?.room_code || '—'}</strong><br>
+                    <span style="font-size:12px;color:#6b7280;">${b.resources?.resource_type} • ${b.resources?.block || 'Main'}</span>
+                </td>
+                <td>${dateStr}<br><span style="font-size:12px;color:#6b7280;">${timeStr}</span></td>
+                <td>${b.booking_type || 'ACADEMIC'}<br><span style="font-size:12px;color:#6b7280;">${b.headcount ? b.headcount + ' pax' : '—'}</span></td>
+                <td style="max-width:200px;">${b.purpose || '—'}</td>
+                <td><span class="t3-badge ${badgeCls[b.status] || 't3-badge-default'}">${b.status}</span></td>
+                <td>${notesHtml}</td>
+                <td>
+                    ${canCancel ? `
+                        <button class="btn btn-secondary cancel-booking-btn" data-id="${b.booking_id}" style="padding:4px 10px;font-size:12px;color:#dc2626;">Cancel</button>
+                    ` : '<span style="color:#9ca3af;font-size:12px;">None</span>'}
+                </td>
+            </tr>
+        `;
+    }).join('');
+
+    tbody.querySelectorAll('.cancel-booking-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const bId = parseInt(btn.dataset.id, 10);
+            if (!confirm(`Are you sure you want to cancel booking #BK-${bId}?`)) return;
+            btn.disabled = true;
+            btn.textContent = 'Cancelling…';
+            const res = await cancelBooking(bId, session.userId);
+            if (res.success) {
+                alert('Booking cancelled successfully.');
+                loadHistory();
+            } else {
+                alert('Cancellation failed: ' + res.message);
+                btn.disabled = false;
+                btn.textContent = 'Cancel';
+            }
+        });
+    });
+}
+</script>
 </body>
 </html>

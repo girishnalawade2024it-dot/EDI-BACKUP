@@ -1,61 +1,190 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Daily Schedule</title>
-    <link rel="stylesheet" href="../assets/css/style.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Daily Lab Schedule — Lab Assistant</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+<link rel="stylesheet" href="../assets/css/t3-styles.css">
 </head>
 <body>
-
 <div class="container">
-
-    <!-- Sidebar -->
     <aside class="sidebar">
         <div class="logo">🧪 Lab Assistant</div>
-
         <nav class="nav">
             <a href="dashboard.html">Dashboard</a>
             <a href="schedule.html" class="active">Daily Schedule</a>
-            <a href="requests.html">Requests</a>
-            <a href="inventory.html">Inventory</a>
+            <a href="requests.html">Maintenance Requests</a>
+            <a href="inventory.html">Lab Status</a>
             <a href="profile.html">Profile</a>
             <a href="../login.html">Logout</a>
         </nav>
     </aside>
 
-    <!-- Main content INSIDE container -->
-    <div class="main-content">
+    <main class="main">
+        <div class="topbar">
+            <h2>Laboratory Schedule Timetable</h2>
+            <div id="topbar-user">Lab Assistant</div>
+        </div>
 
-        <h1>Daily Schedule</h1>
+        <!-- Filter Bar -->
+        <div class="card">
+            <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end;">
+                <div style="flex:1;min-width:180px;">
+                    <label style="display:block;font-size:13px;font-weight:600;margin-bottom:4px;">Date</label>
+                    <input type="date" id="filter-date" style="width:100%;padding:8px;border:1px solid #d1d5db;border-radius:6px;">
+                </div>
+                <div style="flex:1;min-width:200px;">
+                    <label style="display:block;font-size:13px;font-weight:600;margin-bottom:4px;">Laboratory</label>
+                    <select id="filter-lab" style="width:100%;padding:8px;border:1px solid #d1d5db;border-radius:6px;">
+                        <option value="">All Laboratories</option>
+                    </select>
+                </div>
+                <div>
+                    <button id="btn-filter" class="btn" style="height:38px;padding:0 20px;">Filter</button>
+                    <button id="btn-print" class="btn btn-secondary" style="height:38px;padding:0 16px;margin-left:8px;" onclick="window.print()">🖨️ Print</button>
+                </div>
+            </div>
+        </div>
 
-        <table>
-            <tr>
-                <th>Lab</th>
-                <th>Faculty</th>
-                <th>Subject</th>
-                <th>Time</th>
-            </tr>
+        <!-- Schedule Table -->
+        <div class="card">
+            <div class="t3-section-header">
+                <h3>Timetable Schedule</h3>
+                <span id="schedule-subtitle" style="font-size:13px;color:#6b7280;"></span>
+            </div>
 
-            <tr>
-                <td>Lab 407A</td>
-                <td>Dr. Smith</td>
-                <td>Data Structures</td>
-                <td>09:00 - 11:00</td>
-            </tr>
-
-            <tr>
-                <td>Lab 408A</td>
-                <td>Dr. Brown</td>
-                <td>DBMS</td>
-                <td>11:00 - 01:00</td>
-            </tr>
-        </table>
-
-    </div>
-
+            <div class="t3-table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Lab Room</th>
+                            <th>Time Slot</th>
+                            <th>Faculty / User</th>
+                            <th>Type</th>
+                            <th>Purpose / Subject</th>
+                            <th>Headcount</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="schedule-tbody">
+                        <tr><td colspan="7"><span class="t3-stat-loading" style="display:block;margin:16px auto;"></span></td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
 </div>
 
 <script src="../assets/js/app.js"></script>
+<script type="module" src="../assets/js/t3-notifications.js"></script>
+<script type="module">
+import { supabase } from '../assets/js/supabase-client.js';
+import { requireAuth, populateTopbar } from '../assets/js/auth.js';
+
+const session = requireAuth('Lab Assistant');
+if (session) {
+    populateTopbar();
+    initSchedule();
+}
+
+async function initSchedule() {
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const dateInput = document.getElementById('filter-date');
+    dateInput.value = todayStr;
+
+    // Load labs into select
+    const { data: labs } = await supabase
+        .from('resources')
+        .select('resource_id, room_code, block')
+        .eq('resource_type', 'Lab')
+        .order('room_code');
+
+    const labSelect = document.getElementById('filter-lab');
+    (labs || []).forEach(l => {
+        const opt = document.createElement('option');
+        opt.value = l.resource_id;
+        opt.textContent = `${l.room_code} (${l.block || 'Main'})`;
+        labSelect.appendChild(opt);
+    });
+
+    document.getElementById('btn-filter').addEventListener('click', loadSchedule);
+    dateInput.addEventListener('change', loadSchedule);
+    labSelect.addEventListener('change', loadSchedule);
+
+    loadSchedule();
+}
+
+async function loadSchedule() {
+    const tbody = document.getElementById('schedule-tbody');
+    tbody.innerHTML = '<tr><td colspan="7"><span class="t3-stat-loading" style="display:block;margin:16px auto;"></span></td></tr>';
+
+    const dateStr = document.getElementById('filter-date').value || new Date().toISOString().slice(0, 10);
+    const labId   = document.getElementById('filter-lab').value;
+
+    const dayStart = `${dateStr}T00:00:00`;
+    const dayEnd   = `${dateStr}T23:59:59`;
+
+    let query = supabase
+        .from('bookings')
+        .select(`
+            booking_id, booking_type, status, start_at, end_at, purpose, headcount,
+            users!bookings_requested_by_fkey ( name, email ),
+            resources ( resource_id, room_code, resource_type, block )
+        `)
+        .gte('start_at', dayStart)
+        .lte('end_at', dayEnd)
+        .order('start_at', { ascending: true });
+
+    if (labId) {
+        query = query.eq('resource_id', parseInt(labId, 10));
+    }
+
+    const { data: bookings, error } = await query;
+
+    if (error) {
+        tbody.innerHTML = `<tr><td colspan="7" style="color:#dc2626;padding:16px;text-align:center;">Failed to load schedule: ${error.message}</td></tr>`;
+        return;
+    }
+
+    // Filter to labs only
+    const rows = (bookings || []).filter(b => b.resources?.resource_type === 'Lab');
+
+    const d = new Date(dateStr);
+    document.getElementById('schedule-subtitle').textContent = 
+        `${d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })} • ${rows.length} bookings`;
+
+    if (rows.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:24px;color:#6b7280;">No laboratory sessions scheduled for this date.</td></tr>';
+        return;
+    }
+
+    const badgeCls = {
+        APPROVED:  't3-badge-approved',
+        PENDING:   't3-badge-pending',
+        DENIED:    't3-badge-denied',
+        CANCELLED: 't3-badge-cancelled',
+        PREEMPTED: 't3-badge-preempted',
+    };
+
+    tbody.innerHTML = rows.map(b => {
+        const start = new Date(b.start_at);
+        const end   = new Date(b.end_at);
+        const timeStr = `${start.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})} – ${end.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}`;
+
+        return `
+            <tr>
+                <td><strong>🔬 ${b.resources?.room_code || '—'}</strong> (${b.resources?.block || 'Main'})</td>
+                <td><strong>${timeStr}</strong></td>
+                <td>${b.users?.name || 'Unknown'}<br><span style="font-size:12px;color:#6b7280;">${b.users?.email || ''}</span></td>
+                <td>${b.booking_type || 'ACADEMIC'}</td>
+                <td>${b.purpose || '—'}</td>
+                <td>${b.headcount ? b.headcount + ' pax' : '—'}</td>
+                <td><span class="t3-badge ${badgeCls[b.status] || 't3-badge-default'}">${b.status}</span></td>
+            </tr>
+        `;
+    }).join('');
+}
+</script>
 </body>
 </html>

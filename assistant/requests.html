@@ -1,79 +1,297 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Booking Requests</title>
-    <link rel="stylesheet" href="../assets/css/style.css" />
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Maintenance Requests — Lab Assistant</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+<link rel="stylesheet" href="../assets/css/t3-styles.css">
 </head>
 <body>
-
 <div class="container">
-
-    <!-- Sidebar -->
     <aside class="sidebar">
         <div class="logo">🧪 Lab Assistant</div>
-
         <nav class="nav">
             <a href="dashboard.html">Dashboard</a>
             <a href="schedule.html">Daily Schedule</a>
-            <a href="requests.html" class="active">Requests</a>
-            <a href="inventory.html">Inventory</a>
+            <a href="requests.html" class="active">Maintenance Requests</a>
+            <a href="inventory.html">Lab Status</a>
             <a href="profile.html">Profile</a>
             <a href="../login.html">Logout</a>
         </nav>
     </aside>
 
-    <!-- Main Content -->
-    <div class="main-content">
-
+    <main class="main">
         <div class="topbar">
-            <h2>Booking Requests</h2>
+            <h2>Lab Maintenance Requests</h2>
+            <div id="topbar-user">Lab Assistant</div>
         </div>
 
+        <!-- Feedback Alert -->
+        <div id="feedback-alert" style="display:none;margin-bottom:16px;padding:12px 16px;border-radius:6px;font-size:14px;"></div>
+
+        <!-- Log Maintenance Form -->
         <div class="card">
+            <div class="t3-section-header">
+                <h3>🛠️ Log New Maintenance / Servicing Slot</h3>
+                <span style="font-size:12px;color:#6b7280;">Reserves lab time for repairs, software updates, or calibration</span>
+            </div>
 
-            <table>
-                <tr>
-                    <th>Request ID</th>
-                    <th>Faculty</th>
-                    <th>Lab</th>
-                    <th>Time</th>
-                    <th>Status</th>
-                </tr>
+            <form id="maintenance-form" style="margin-top:14px;">
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label style="font-weight:600;">Select Laboratory *</label>
+                        <select id="req-lab" required style="width:100%;padding:10px;border:1px solid #d1d5db;border-radius:6px;">
+                            <option value="">Loading labs…</option>
+                        </select>
+                    </div>
 
-                <tr>
-                    <td>REQ101</td>
-                    <td>Dr. Smith</td>
-                    <td>Lab 407A</td>
-                    <td>09:00 - 11:00</td>
-                    <td><span class="status pending">Pending</span></td>
-                </tr>
+                    <div class="form-group">
+                        <label style="font-weight:600;">Maintenance Date *</label>
+                        <input type="date" id="req-date" required style="width:100%;padding:10px;border:1px solid #d1d5db;border-radius:6px;">
+                    </div>
+                </div>
 
-                <tr>
-                    <td>REQ102</td>
-                    <td>Dr. Brown</td>
-                    <td>Lab 408A</td>
-                    <td>11:00 - 01:00</td>
-                    <td><span class="status pending">Pending</span></td>
-                </tr>
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label style="font-weight:600;">Start Time (08:00 – 17:30) *</label>
+                        <input type="time" id="req-start" value="09:00" min="08:00" max="17:30" step="1800" required style="width:100%;padding:10px;border:1px solid #d1d5db;border-radius:6px;">
+                    </div>
 
-                <tr>
-                    <td>REQ103</td>
-                    <td>Dr. Patel</td>
-                    <td>Lab 409A</td>
-                    <td>02:00 - 04:00</td>
-                    <td><span class="status available">Approved</span></td>
-                </tr>
+                    <div class="form-group">
+                        <label style="font-weight:600;">End Time (08:30 – 18:00) *</label>
+                        <input type="time" id="req-end" value="12:00" min="08:30" max="18:00" step="1800" required style="width:100%;padding:10px;border:1px solid #d1d5db;border-radius:6px;">
+                    </div>
+                </div>
 
-            </table>
+                <div class="form-group">
+                    <label style="font-weight:600;">Maintenance Reason & Details *</label>
+                    <textarea id="req-purpose" rows="2" placeholder="Describe the maintenance activity (e.g. OS upgrade, projector repair, annual calibration)..." required style="width:100%;padding:10px;border:1px solid #d1d5db;border-radius:6px;font-family:inherit;"></textarea>
+                </div>
 
+                <div style="display:flex;gap:12px;align-items:center;margin-top:16px;">
+                    <button type="submit" id="btn-submit-req" class="btn" style="padding:10px 20px;">Submit Maintenance Request</button>
+                    <span id="req-spinner" class="t3-stat-loading" style="display:none;"></span>
+                </div>
+            </form>
         </div>
 
-    </div>
+        <!-- Maintenance Requests List -->
+        <div class="card">
+            <div class="t3-section-header">
+                <h3>My Submitted Maintenance Requests</h3>
+                <span id="req-count" style="font-size:13px;color:#6b7280;"></span>
+            </div>
 
+            <div class="t3-table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Ref #</th>
+                            <th>Lab Room</th>
+                            <th>Date & Time</th>
+                            <th>Work Description</th>
+                            <th>Status</th>
+                            <th>Admin Decision Note</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="requests-tbody">
+                        <tr><td colspan="7"><span class="t3-stat-loading" style="display:block;margin:16px auto;"></span></td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
 </div>
 
 <script src="../assets/js/app.js"></script>
+<script type="module" src="../assets/js/t3-notifications.js"></script>
+<script type="module">
+import { supabase } from '../assets/js/supabase-client.js';
+import { requireAuth, populateTopbar } from '../assets/js/auth.js';
+import { submitBooking, cancelBooking } from '../assets/js/booking-engine.js';
+
+const session = requireAuth('Lab Assistant');
+if (session) {
+    populateTopbar();
+    initRequestsPage();
+}
+
+async function initRequestsPage() {
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const dateInput = document.getElementById('req-date');
+    dateInput.min = todayStr;
+    dateInput.value = todayStr;
+
+    // Load Lab resources
+    const { data: labs } = await supabase
+        .from('resources')
+        .select('*')
+        .eq('resource_type', 'Lab')
+        .order('room_code');
+
+    const labSelect = document.getElementById('req-lab');
+    labSelect.innerHTML = '<option value="">-- Select Laboratory --</option>';
+    (labs || []).forEach(l => {
+        const opt = document.createElement('option');
+        opt.value = l.resource_id;
+        opt.textContent = `${l.room_code} (${l.block || 'Main'}) — Status: ${l.status}`;
+        labSelect.appendChild(opt);
+    });
+
+    document.getElementById('maintenance-form').addEventListener('submit', handleSubmitRequest);
+    loadRequestsList();
+}
+
+async function handleSubmitRequest(e) {
+    e.preventDefault();
+
+    const alertEl = document.getElementById('feedback-alert');
+    const submitBtn = document.getElementById('btn-submit-req');
+    const spinner = document.getElementById('req-spinner');
+
+    alertEl.style.display = 'none';
+
+    const labId   = parseInt(document.getElementById('req-lab').value, 10);
+    const date    = document.getElementById('req-date').value;
+    const start   = document.getElementById('req-start').value;
+    const end     = document.getElementById('req-end').value;
+    const purpose = document.getElementById('req-purpose').value.trim();
+
+    if (!labId) {
+        alert('Please choose a laboratory.');
+        return;
+    }
+
+    const startAt = `${date}T${start}:00`;
+    const endAt   = `${date}T${end}:00`;
+
+    submitBtn.disabled = true;
+    spinner.style.display = 'inline-block';
+
+    try {
+        const res = await submitBooking({
+            userId: session.userId,
+            resourceId: labId,
+            bookingType: 'MAINTENANCE',
+            startAt,
+            endAt,
+            purpose: `[Maintenance] ${purpose}`,
+            headcount: 0
+        });
+
+        submitBtn.disabled = false;
+        spinner.style.display = 'none';
+
+        if (res.success) {
+            alertEl.style.display = 'block';
+            alertEl.style.background = '#f0fdf4';
+            alertEl.style.color = '#15803d';
+            alertEl.textContent = `Maintenance request #BK-${res.bookingId} created successfully. Awaiting admin approval.`;
+            document.getElementById('req-purpose').value = '';
+            loadRequestsList();
+        } else {
+            alertEl.style.display = 'block';
+            alertEl.style.background = '#fef2f2';
+            alertEl.style.color = '#b91c1c';
+            alertEl.textContent = res.message || 'Failed to submit request.';
+        }
+    } catch (err) {
+        submitBtn.disabled = false;
+        spinner.style.display = 'none';
+        alertEl.style.display = 'block';
+        alertEl.style.background = '#fef2f2';
+        alertEl.style.color = '#b91c1c';
+        alertEl.textContent = err.message || 'An error occurred.';
+    }
+}
+
+async function loadRequestsList() {
+    const tbody = document.getElementById('requests-tbody');
+    tbody.innerHTML = '<tr><td colspan="7"><span class="t3-stat-loading" style="display:block;margin:16px auto;"></span></td></tr>';
+
+    const { data: requests, error } = await supabase
+        .from('bookings')
+        .select(`
+            booking_id, booking_type, status, start_at, end_at,
+            purpose, decision_reason, decision_note,
+            resources ( room_code, block )
+        `)
+        .eq('requested_by', session.userId)
+        .order('start_at', { ascending: false });
+
+    if (error) {
+        tbody.innerHTML = `<tr><td colspan="7" style="color:#dc2626;padding:16px;text-align:center;">Failed to load requests: ${error.message}</td></tr>`;
+        return;
+    }
+
+    const rows = requests || [];
+    document.getElementById('req-count').textContent = `${rows.length} total`;
+
+    if (rows.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:24px;color:#6b7280;">No maintenance requests logged yet.</td></tr>';
+        return;
+    }
+
+    const badgeCls = {
+        APPROVED:  't3-badge-approved',
+        PENDING:   't3-badge-pending',
+        DENIED:    't3-badge-denied',
+        CANCELLED: 't3-badge-cancelled',
+        PREEMPTED: 't3-badge-preempted',
+    };
+
+    const now = new Date();
+
+    tbody.innerHTML = rows.map(r => {
+        const start = new Date(r.start_at);
+        const end   = new Date(r.end_at);
+        const dateStr = start.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+        const timeStr = `${start.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})} – ${end.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}`;
+
+        const isPast = end < now;
+        const canCancel = !isPast && (r.status === 'PENDING' || r.status === 'APPROVED');
+
+        let noteText = '—';
+        if (r.decision_reason) noteText = `<strong>${r.decision_reason}</strong>`;
+        if (r.decision_note) noteText += ` (${r.decision_note})`;
+
+        return `
+            <tr>
+                <td><strong>#BK-${r.booking_id}</strong></td>
+                <td><strong>🔬 ${r.resources?.room_code || '—'}</strong> (${r.resources?.block || 'Main'})</td>
+                <td>${dateStr}<br><span style="font-size:12px;color:#6b7280;">${timeStr}</span></td>
+                <td>${r.purpose || '—'}</td>
+                <td><span class="t3-badge ${badgeCls[r.status] || 't3-badge-default'}">${r.status}</span></td>
+                <td style="font-size:13px;color:#4b5563;">${noteText}</td>
+                <td>
+                    ${canCancel ? `
+                        <button class="btn btn-secondary cancel-req-btn" data-id="${r.booking_id}" style="padding:4px 8px;font-size:12px;color:#dc2626;">Cancel</button>
+                    ` : '<span style="color:#9ca3af;font-size:12px;">—</span>'}
+                </td>
+            </tr>
+        `;
+    }).join('');
+
+    tbody.querySelectorAll('.cancel-req-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const bId = parseInt(btn.dataset.id, 10);
+            if (!confirm(`Cancel maintenance request #BK-${bId}?`)) return;
+            btn.disabled = true;
+            btn.textContent = 'Cancelling…';
+            const res = await cancelBooking(bId, session.userId);
+            if (res.success) {
+                alert('Request cancelled.');
+                loadRequestsList();
+            } else {
+                alert('Error: ' + res.message);
+                btn.disabled = false;
+                btn.textContent = 'Cancel';
+            }
+        });
+    });
+}
+</script>
 </body>
 </html>
