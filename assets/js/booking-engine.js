@@ -102,12 +102,14 @@ export async function submitBooking({
         return { success: false, code: 'TOO_LONG', message: `Maximum booking duration is ${CONFIG.MAX_BOOKING_HOURS} hours.` };
     }
 
-    // FR-3.4: Within operating hours
-    const startH = new Date(startAt).getHours() * 60 + new Date(startAt).getMinutes();
-    const endH   = new Date(endAt).getHours()   * 60 + new Date(endAt).getMinutes();
-    const opS    = CONFIG.OPERATING_START.split(':').reduce((a, b) => +a * 60 + +b);
-    const opE    = CONFIG.OPERATING_END.split(':').reduce((a, b) => +a * 60 + +b);
-    if (startH < opS || endH > opE) {
+    // FR-3.4: Within operating hours (08:00 - 18:00)
+    const [sH, sM] = (startAt.includes('T') ? startAt.split('T')[1] : startAt).slice(0, 5).split(':').map(Number);
+    const [eH, eM] = (endAt.includes('T') ? endAt.split('T')[1] : endAt).slice(0, 5).split(':').map(Number);
+    const startMins = sH * 60 + sM;
+    const endMins   = eH * 60 + eM;
+    const opS = CONFIG.OPERATING_HOURS.START_HOUR * 60;
+    const opE = CONFIG.OPERATING_HOURS.END_HOUR * 60;
+    if (startMins < opS || endMins > opE) {
         return { success: false, code: 'OUTSIDE_HOURS', message: `Bookings must be within ${CONFIG.OPERATING_START}–${CONFIG.OPERATING_END}.` };
     }
 

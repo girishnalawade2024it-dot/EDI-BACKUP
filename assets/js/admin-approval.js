@@ -4,7 +4,7 @@
 // ============================================================
 
 import { supabase }                               from './supabase-client.js';
-import { requireAuth }                             from './auth.js';
+import { requireAuth, getSession }                  from './auth.js';
 import { approveBooking, denyBooking, preemptBooking } from './booking-engine.js';
 import { CONFIG, fmtDateTime }                     from './config.js';
 
@@ -72,14 +72,15 @@ export async function loadApprovalQueue(containerId = 't3-approval-list', countI
 
     // Expose handlers globally for inline onclick
     window.handleApprove = async (id) => {
+        const adminId = getSession()?.userId || 5;
         const msg = document.getElementById(`appr-msg-${id}`);
         msg.style.display = 'block';
         msg.textContent   = 'Processing…';
-        const res = await approveBooking(id, session.userId, 'Approved by admin');
+        const res = await approveBooking(id, adminId, 'Approved by admin');
         if (res.success) {
             document.getElementById(`appr-${id}`)?.remove();
             if (countEl) {
-                const c = parseInt(countEl.textContent) - 1;
+                const c = Math.max(0, (parseInt(countEl.textContent) || 1) - 1);
                 countEl.textContent = `${c} pending`;
             }
         } else {
@@ -89,15 +90,16 @@ export async function loadApprovalQueue(containerId = 't3-approval-list', countI
     };
 
     window.handleDeny = async (id) => {
+        const adminId = getSession()?.userId || 5;
         const reason = document.getElementById(`deny-reason-${id}`)?.value;
         const msg    = document.getElementById(`appr-msg-${id}`);
         msg.style.display = 'block';
         msg.textContent   = 'Processing…';
-        const res = await denyBooking(id, session.userId, reason, '');
+        const res = await denyBooking(id, adminId, reason, '');
         if (res.success) {
             document.getElementById(`appr-${id}`)?.remove();
             if (countEl) {
-                const c = parseInt(countEl.textContent) - 1;
+                const c = Math.max(0, (parseInt(countEl.textContent) || 1) - 1);
                 countEl.textContent = `${c} pending`;
             }
         } else {
