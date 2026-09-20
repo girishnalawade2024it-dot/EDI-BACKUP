@@ -4,7 +4,7 @@
 // ============================================================
 
 import { supabase, isConfigured } from './supabase-client.js';
-import { CONFIG }                     from './config.js';
+import { CONFIG, nowLocalISO }        from './config.js';
 
 const SEED_USERS = [
     { user_id: 1, name: 'Dr. Anjali Deshmukh', email: 'anjali.deshmukh@college.edu', role: 'Faculty', role_id: 1, can_override: false },
@@ -109,7 +109,7 @@ export async function login(email /*, password */) {
 
                 supabase
                     .from('users')
-                    .update({ last_login_at: new Date().toISOString() })
+                    .update({ last_login_at: nowLocalISO() })
                     .eq('user_id', data.user_id)
                     .then(() => {});
 

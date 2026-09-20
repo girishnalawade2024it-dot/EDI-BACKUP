@@ -8,6 +8,10 @@ export const CONFIG = {
     OPERATING_START:   '08:00',
     OPERATING_END:     '18:00',
 
+    // Same window as whole hours. Derived below from the strings above so
+    // the two representations can never drift apart.
+    OPERATING_HOURS:   { START_HOUR: 8, END_HOUR: 18 },
+
     // Slot granularity in minutes (SRS OI-2: 30-min)
     SLOT_MINUTES:      30,
 
@@ -54,6 +58,10 @@ export const CONFIG = {
     },
 };
 
+// Keep the numeric operating hours in step with the 'HH:MM' strings above.
+CONFIG.OPERATING_HOURS.START_HOUR = Number(CONFIG.OPERATING_START.split(':')[0]);
+CONFIG.OPERATING_HOURS.END_HOUR   = Number(CONFIG.OPERATING_END.split(':')[0]);
+
 /**
  * Generate all 30-min time slots between OPERATING_START and OPERATING_END.
  * Returns array of 'HH:MM' strings.
@@ -96,4 +104,30 @@ export function fmtTime(iso) {
     return new Date(iso).toLocaleTimeString('en-IN', {
         hour: '2-digit', minute: '2-digit', hour12: true,
     });
+}
+
+/**
+ * Current local time as 'YYYY-MM-DDTHH:MM:SS'.
+ *
+ * Every timestamp column in this schema is `timestamp without time zone`,
+ * and the booking times written by the forms are local wall-clock
+ * ('2026-09-21T09:00:00'). Date#toISOString() returns UTC, so using it to
+ * stamp decided_at / cancelled_at / last_login_at stored a second, silently
+ * different convention in the same columns -- in IST those values read back
+ * 5h30m early. These helpers keep every write on local wall-clock.
+ */
+export function nowLocalISO() {
+    const d = new Date();
+    const p = n => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}` +
+           `T${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+}
+
+/**
+ * Today's local date as 'YYYY-MM-DD'.
+ * toISOString().slice(0, 10) returns the UTC date, which is still yesterday
+ * for any local time before the UTC offset (before 05:30 in IST).
+ */
+export function todayLocalISO() {
+    return nowLocalISO().slice(0, 10);
 }

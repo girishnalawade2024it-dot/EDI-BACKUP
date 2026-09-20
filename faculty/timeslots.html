@@ -112,7 +112,7 @@
 <script type="module">
 import { supabase } from '../assets/js/supabase-client.js';
 import { requireAuth, populateTopbar } from '../assets/js/auth.js';
-import { CONFIG } from '../assets/js/config.js';
+import { CONFIG, todayLocalISO } from '../assets/js/config.js';
 
 const session = requireAuth('Faculty');
 if (session) {
@@ -131,8 +131,8 @@ function generateTimeSlots() {
     const endHour = CONFIG.OPERATING_HOURS.END_HOUR;     // 18
 
     for (let h = startHour; h < endHour; h++) {
-        for (let m = 0; m < 60; m += CONFIG.SLOT_INTERVAL_MINUTES) {
-            const nextM = m + CONFIG.SLOT_INTERVAL_MINUTES;
+        for (let m = 0; m < 60; m += CONFIG.SLOT_MINUTES) {
+            const nextM = m + CONFIG.SLOT_MINUTES;
             const nextH = nextM >= 60 ? h + 1 : h;
             const normM = nextM % 60;
 
@@ -149,7 +149,7 @@ async function initTimeslots() {
     const paramResId = urlParams.get('resource_id');
     const paramDate  = urlParams.get('date');
 
-    const todayStr = new Date().toISOString().slice(0, 10);
+    const todayStr = todayLocalISO();
     const dateInput = document.getElementById('select-date');
     dateInput.min = todayStr;
     dateInput.value = paramDate || todayStr;

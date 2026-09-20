@@ -68,6 +68,7 @@
 <script type="module">
 import { supabase } from '../assets/js/supabase-client.js';
 import { requireAuth, populateTopbar } from '../assets/js/auth.js';
+import { todayLocalISO } from '../assets/js/config.js';
 
 const session = requireAuth('Faculty');
 if (session) {
@@ -78,7 +79,7 @@ if (session) {
 async function initPage() {
     const urlParams = new URLSearchParams(window.location.search);
     const dateParam = urlParams.get('date');
-    const todayStr = new Date().toISOString().slice(0, 10);
+    const todayStr = todayLocalISO();
 
     const dateInput = document.getElementById('filter-date');
     dateInput.min = todayStr;
@@ -109,7 +110,7 @@ async function loadResources() {
     const grid = document.getElementById('resources-grid');
     grid.innerHTML = '<div class="card" style="grid-column:1/-1;text-align:center;"><span class="t3-stat-loading" style="display:block;margin:20px auto;"></span><p style="color:#6b7280;">Checking resource status…</p></div>';
 
-    const selectedDate = document.getElementById('filter-date').value || new Date().toISOString().slice(0, 10);
+    const selectedDate = document.getElementById('filter-date').value || todayLocalISO();
     const selectedType = document.getElementById('filter-type').value;
     const selectedBlock = document.getElementById('filter-block').value;
 

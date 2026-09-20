@@ -96,6 +96,7 @@
 <script type="module">
 import { supabase } from '../assets/js/supabase-client.js';
 import { requireAuth, populateTopbar } from '../assets/js/auth.js';
+import { nowLocalISO } from '../assets/js/config.js';
 import { renderCalendar } from '../assets/js/calendar-widget.js';
 import { cancelBooking } from '../assets/js/booking-engine.js';
 
@@ -106,7 +107,7 @@ if (session) {
 }
 
 async function loadDashboard(user) {
-    const nowIso = new Date().toISOString();
+    const nowIso = nowLocalISO();
 
     // 1. Fetch available active resources count
     const { count: activeCount } = await supabase
