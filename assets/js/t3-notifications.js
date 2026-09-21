@@ -7,6 +7,7 @@
 
 import { supabase } from './supabase-client.js';
 import { getSession } from './auth.js';
+import { nowLocalISO } from './config.js';
 
 function getEffectiveUserId() {
     const session = getSession();
@@ -81,7 +82,7 @@ function updateBadge(badgeEl, count) {
 async function markRead(notifId, itemEl, badgeEl) {
     const { error } = await supabase
         .from('notifications')
-        .update({ is_read: true, read_at: new Date().toISOString() })
+        .update({ is_read: true, read_at: nowLocalISO() })
         .eq('notification_id', notifId);
 
     if (error) {
@@ -101,7 +102,7 @@ async function markAllRead(badgeEl, listEl) {
     const userId = getEffectiveUserId();
     const { error } = await supabase
         .from('notifications')
-        .update({ is_read: true, read_at: new Date().toISOString() })
+        .update({ is_read: true, read_at: nowLocalISO() })
         .eq('user_id', userId)
         .eq('is_read', false);
 

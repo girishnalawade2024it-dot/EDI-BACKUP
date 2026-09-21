@@ -3,6 +3,8 @@
 // SRS FR-2.4, FR-2.5
 // ============================================================
 
+import { todayLocalISO } from './config.js';
+
 const DAYS    = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONTHS  = [
     'January','February','March','April','May','June',
@@ -42,7 +44,7 @@ export function renderCalendar(containerId, bookings = [], onDateClick = null, i
         const lookup    = buildLookup(bookings);
         const firstDay  = new Date(year, month, 1).getDay();
         const daysInMon = new Date(year, month + 1, 0).getDate();
-        const todayStr  = today.toISOString().slice(0, 10);
+        const todayStr  = todayLocalISO();
 
         host.innerHTML = `
         <div class="cal-widget">

@@ -81,6 +81,7 @@
 <script type="module">
 import { supabase } from '../assets/js/supabase-client.js';
 import { requireAuth, populateTopbar } from '../assets/js/auth.js';
+import { todayLocalISO } from '../assets/js/config.js';
 
 const session = requireAuth('Lab Assistant');
 if (session) {
@@ -89,7 +90,7 @@ if (session) {
 }
 
 async function initSchedule() {
-    const todayStr = new Date().toISOString().slice(0, 10);
+    const todayStr = todayLocalISO();
     const dateInput = document.getElementById('filter-date');
     dateInput.value = todayStr;
 
@@ -119,7 +120,7 @@ async function loadSchedule() {
     const tbody = document.getElementById('schedule-tbody');
     tbody.innerHTML = '<tr><td colspan="7"><span class="t3-stat-loading" style="display:block;margin:16px auto;"></span></td></tr>';
 
-    const dateStr = document.getElementById('filter-date').value || new Date().toISOString().slice(0, 10);
+    const dateStr = document.getElementById('filter-date').value || todayLocalISO();
     const labId   = document.getElementById('filter-lab').value;
 
     const dayStart = `${dateStr}T00:00:00`;

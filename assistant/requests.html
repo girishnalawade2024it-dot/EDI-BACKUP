@@ -110,6 +110,7 @@
 <script type="module">
 import { supabase } from '../assets/js/supabase-client.js';
 import { requireAuth, populateTopbar } from '../assets/js/auth.js';
+import { todayLocalISO } from '../assets/js/config.js';
 import { submitBooking, cancelBooking } from '../assets/js/booking-engine.js';
 
 const session = requireAuth('Lab Assistant');
@@ -119,7 +120,7 @@ if (session) {
 }
 
 async function initRequestsPage() {
-    const todayStr = new Date().toISOString().slice(0, 10);
+    const todayStr = todayLocalISO();
     const dateInput = document.getElementById('req-date');
     dateInput.min = todayStr;
     dateInput.value = todayStr;

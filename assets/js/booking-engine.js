@@ -5,7 +5,7 @@
 // ============================================================
 
 import { supabase } from './supabase-client.js';
-import { CONFIG }   from './config.js';
+import { CONFIG, nowLocalISO } from './config.js';
 
 // ── Audit log writer (SRS FR-8.1 – append-only) ─────────────
 export async function insertAuditLog({
@@ -239,7 +239,7 @@ export async function cancelBooking(bookingId, userId) {
         .from('bookings')
         .update({
             status:       CONFIG.STATUS.CANCELLED,
-            cancelled_at: new Date().toISOString(),
+            cancelled_at: nowLocalISO(),
         })
         .eq('booking_id', bookingId);
 
@@ -288,7 +288,7 @@ export async function approveBooking(bookingId, adminUserId, note = '') {
             status:          CONFIG.STATUS.APPROVED,
             approved_by:     adminUserId,
             decision_note:   note,
-            decided_at:      new Date().toISOString(),
+            decided_at:      nowLocalISO(),
         })
         .eq('booking_id', bookingId);
 
@@ -327,7 +327,7 @@ export async function denyBooking(bookingId, adminUserId, reason, note = '') {
             approved_by:     adminUserId,
             decision_reason: reason,
             decision_note:   note,
-            decided_at:      new Date().toISOString(),
+            decided_at:      nowLocalISO(),
         })
         .eq('booking_id', bookingId);
 
@@ -366,7 +366,7 @@ export async function preemptBooking(bookingId, adminUserId, reason) {
             status:          CONFIG.STATUS.PREEMPTED,
             approved_by:     adminUserId,
             decision_reason: reason,
-            decided_at:      new Date().toISOString(),
+            decided_at:      nowLocalISO(),
         })
         .eq('booking_id', bookingId);
 

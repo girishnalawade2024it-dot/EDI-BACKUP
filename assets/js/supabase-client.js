@@ -7,13 +7,14 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-export const SUPABASE_URL      = 'YOUR_SUPABASE_URL';       // Set your real Supabase URL here
-export const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';  // Set your real Supabase anon key here
+export const SUPABASE_URL      = 'https://vzrevunlustmcssdqqnw.supabase.co';
+export const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ6cmV2dW5sdXN0bWNzc2RxcW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgzNzU2NjYsImV4cCI6MjEwMzk1MTY2Nn0.7-1w7U3tJFLiGZUKWOXma433Lu61EQRkhD7MMdP4PpY';
 
 export const isConfigured = Boolean(
     SUPABASE_URL &&
-    SUPABASE_URL !== 'YOUR_SUPABASE_URL' &&
-    !SUPABASE_URL.includes('YOUR_')
+    SUPABASE_ANON_KEY &&
+    !SUPABASE_URL.includes('YOUR_') &&
+    !SUPABASE_ANON_KEY.includes('YOUR_')
 );
 
 // ── Initial Seed Data (from 003_insert_test_data.sql) ────────

@@ -86,6 +86,7 @@
 <script type="module">
 import { supabase } from '../assets/js/supabase-client.js';
 import { requireAuth, populateTopbar } from '../assets/js/auth.js';
+import { todayLocalISO } from '../assets/js/config.js';
 
 const session = requireAuth('Lab Assistant');
 if (session) {
@@ -94,7 +95,7 @@ if (session) {
 }
 
 async function loadDashboard() {
-    const todayStr = new Date().toISOString().slice(0, 10);
+    const todayStr = todayLocalISO();
     const dayStart = `${todayStr}T00:00:00`;
     const dayEnd   = `${todayStr}T23:59:59`;
 
