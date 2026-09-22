@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Profile</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+<link rel="stylesheet" href="../assets/css/t3-styles.css">
+</head>
+<body>
+<div class="container">
+<aside class="sidebar">
+<div class="logo">🛠️ Admin Panel</div>
+<nav class="nav">
+<a href="dashboard.html">Dashboard</a>
+<a href="users.html">Users</a>
+<a href="labs.html">Laboratories</a>
+<a href="classrooms.html">Classrooms</a>
+<a href="resources.html">Resources</a>
+<a href="conflicts.html">Audit Log</a>
+<a href="reports.html">Reports</a>
+<a href="profile.html" class="active">Profile</a>
+<a href="../login.html">Logout</a>
+</nav>
+</aside>
+<main class="main">
+<div class="topbar"><h2>My Profile</h2><div id="topbar-user"></div></div>
+
+<div class="card" style="max-width:500px;">
+<div class="profile">
+    <div class="avatar" id="prof-avatar">A</div>
+    <div class="profile-info">
+        <h3 id="prof-name">—</h3>
+        <p id="prof-email">—</p>
+        <span class="t3-badge t3-badge-approved" id="prof-role">—</span>
+    </div>
+</div>
+<hr style="margin:20px 0;border-color:#f3f4f6;">
+<div style="display:grid;gap:12px;font-size:14px;">
+    <div><strong>User ID:</strong> <span id="prof-id">—</span></div>
+    <div><strong>Last Login:</strong> <span id="prof-login">—</span></div>
+</div>
+</div>
+</main>
+</div>
+
+<script src="../assets/js/app.js"></script>
+<script type="module" src="../assets/js/t3-notifications.js"></script>
+<script type="module">
+import { requireAuth, getSession, populateTopbar } from '../assets/js/auth.js';
+import { apiClient }  from '../assets/js/api-client.js';
+import { fmtDateTime } from '../assets/js/config.js';
+
+requireAuth('Admin');
+populateTopbar();
+const session = getSession();
+
+document.getElementById('prof-avatar').textContent = session?.name?.[0]?.toUpperCase() ?? 'A';
+document.getElementById('prof-name').textContent   = session?.name ?? '—';
+document.getElementById('prof-email').textContent  = session?.email ?? '—';
+document.getElementById('prof-role').textContent   = session?.role ?? '—';
+document.getElementById('prof-id').textContent     = session?.userId ?? '—';
+
+async function loadProfile() {
+    document.getElementById('prof-login').textContent = 'Current session';
+}
+loadProfile();
+</script>
+</body>
+</html>

@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>All Resources</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+<link rel="stylesheet" href="../assets/css/t3-styles.css">
+</head>
+<body>
+<div class="container">
+<aside class="sidebar">
+<div class="logo">🛠️ Admin Panel</div>
+<nav class="nav">
+<a href="dashboard.html">Dashboard</a>
+<a href="users.html">Users</a>
+<a href="labs.html">Laboratories</a>
+<a href="classrooms.html">Classrooms</a>
+<a href="resources.html" class="active">Resources</a>
+<a href="conflicts.html">Audit Log</a>
+<a href="reports.html">Reports</a>
+<a href="profile.html">Profile</a>
+<a href="../login.html">Logout</a>
+</nav>
+</aside>
+<main class="main">
+<div class="topbar">
+<h2>All Resources</h2>
+<div id="topbar-user"></div>
+</div>
+
+<!-- Filters -->
+<div class="t3-filter-bar">
+    <div class="t3-filter-group">
+        <label>Type</label>
+        <select id="f-type">
+            <option value="">All Types</option>
+            <option value="Lab">Lab</option>
+            <option value="Classroom">Classroom</option>
+        </select>
+    </div>
+    <div class="t3-filter-group">
+        <label>Block</label>
+        <select id="f-block">
+            <option value="">All Blocks</option>
+            <option value="MB">MB</option>
+            <option value="AC">AC</option>
+        </select>
+    </div>
+    <div class="t3-filter-group">
+        <label>Status</label>
+        <select id="f-status">
+            <option value="">All Statuses</option>
+            <option value="ACTIVE">Active</option>
+            <option value="UNAVAILABLE">Unavailable</option>
+        </select>
+    </div>
+    <div class="t3-filter-actions">
+        <button class="btn" onclick="loadResources()">Filter</button>
+    </div>
+</div>
+
+<div class="card">
+<div class="t3-table-wrap">
+<table>
+    <thead>
+        <tr><th>#</th><th>Room Code</th><th>Type</th><th>Block</th><th>Capacity</th><th>Status</th><th>Action</th></tr>
+    </thead>
+    <tbody id="res-tbody">
+        <tr><td colspan="7"><span class="t3-stat-loading" style="display:block;margin:16px auto;"></span></td></tr>
+    </tbody>
+</table>
+</div>
+</div>
+</main>
+</div>
+
+<script src="../assets/js/app.js"></script>
+<script type="module" src="../assets/js/t3-notifications.js"></script>
+<script type="module">
+import { requireAuth, populateTopbar } from '../assets/js/auth.js';
+import { apiClient }                   from '../assets/js/api-client.js';
+import { insertAuditLog }              from '../assets/js/booking-engine.js';
+import { CONFIG }                      from '../assets/js/config.js';
+
+const session = requireAuth('Admin');
+populateTopbar();
+
+let allResourcesData = [];
+
+async function toggleStatus(id, current) {
+    const next = current === 'ACTIVE' ? 'UNAVAILABLE' : 'ACTIVE';
+    const resToUpdate = allResourcesData.find(r => r.resource_id === id);
+    const { error } = await apiClient.put(`/resources/${id}/`, {
+        ...resToUpdate,
+        status: next
+    });
+    if (error) { alert(error.message); return; }
+    await insertAuditLog({ eventType: CONFIG.AUDIT.RESOURCE_UPDATED, actorUserId: session.userId, targetEntityType: 'RESOURCE', targetEntityId: id, previousState: current, newState: next, reason: 'Admin toggle' });
+    loadResources();
+}
+window.loadResources = loadResources;
+window.toggleStatus  = toggleStatus;
+
+async function loadResources() {
+    const tbody = document.getElementById('res-tbody');
+    const { data: allResources, error } = await apiClient.get('/resources/');
+    
+    if (error) { tbody.innerHTML = `<tr><td colspan="7"><div class="t3-error">${error.message}</div></td></tr>`; return; }
+    
+    let data = allResources || [];
+    if (allResources) allResourcesData = allResources;
+
+    const type   = document.getElementById('f-type').value;
+    const block  = document.getElementById('f-block').value;
+    const status = document.getElementById('f-status').value;
+    
+    if (type)   data = data.filter(r => r.resource_type === type);
+    if (block)  data = data.filter(r => r.block === block);
+    if (status) data = data.filter(r => r.status === status);
+
+    data.sort((a, b) => a.resource_type.localeCompare(b.resource_type) || a.room_code.localeCompare(b.room_code));
+    
+    tbody.innerHTML = data.map(r => {
+        const active = r.status === 'ACTIVE';
+        return `<tr>
+            <td style="color:#9ca3af;">${r.resource_id}</td>
+            <td><strong>${r.room_code}</strong></td>
+            <td>${r.resource_type}</td>
+            <td>${r.block ?? '—'}</td>
+            <td>${r.capacity ?? '—'}</td>
+            <td><span class="status ${active ? 'available' : 'booked'}">${r.status}</span></td>
+            <td><button class="btn ${active?'btn-secondary':''}" style="font-size:12px;padding:6px 12px;" onclick="toggleStatus(${r.resource_id},'${r.status}')">${active?'Deactivate':'Activate'}</button></td>
+        </tr>`;
+    }).join('') || '<tr><td colspan="7" class="t3-empty">No resources match.</td></tr>';
+}
+loadResources();
+</script>
+</body>
+</html>

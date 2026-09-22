@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Booking Confirmation — Faculty Portal</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+<link rel="stylesheet" href="../assets/css/t3-styles.css">
+</head>
+<body>
+<div class="container">
+    <aside class="sidebar">
+        <div class="logo">🎓 Faculty Portal</div>
+        <nav class="nav">
+            <a href="dashboard.html">Dashboard</a>
+            <a href="resources.html">Book Resource</a>
+            <a href="history.html">Booking History</a>
+            <a href="profile.html">Profile</a>
+            <a href="../login.html">Logout</a>
+        </nav>
+    </aside>
+
+    <main class="main">
+        <div class="topbar">
+            <h2>Booking Confirmation</h2>
+            <div id="topbar-user">Faculty Member</div>
+        </div>
+
+        <div class="card" style="text-align:center;padding:40px 24px;max-width:700px;margin:20px auto;">
+            <div style="font-size:54px;color:#16a34a;margin-bottom:12px;">✅</div>
+            <h2 style="margin:0 0 8px 0;">Booking Submitted Successfully!</h2>
+            <p style="color:#6b7280;margin:0 0 24px 0;">
+                Your reservation request has been registered in the system and routed to the administrator for review.
+            </p>
+
+            <div id="booking-details-box" class="card" style="text-align:left;background:#f8fafc;border:1px solid #e2e8f0;padding:20px;">
+                <span class="t3-stat-loading" style="display:block;margin:20px auto;"></span>
+            </div>
+
+            <div style="margin-top:28px;display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
+                <a href="dashboard.html" class="btn">Return to Dashboard</a>
+                <a href="history.html" class="btn btn-secondary">View My Bookings</a>
+                <a href="resources.html" class="btn btn-secondary">Book Another</a>
+            </div>
+        </div>
+    </main>
+</div>
+
+<script src="../assets/js/app.js"></script>
+<script type="module" src="../assets/js/t3-notifications.js"></script>
+<script type="module">
+import { apiClient } from '../assets/js/api-client.js';
+import { requireAuth, populateTopbar } from '../assets/js/auth.js';
+
+const session = requireAuth('Faculty');
+if (session) {
+    populateTopbar();
+    loadConfirmation();
+}
+
+async function loadConfirmation() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const bookingId = urlParams.get('booking_id');
+    const box = document.getElementById('booking-details-box');
+
+    if (!bookingId) {
+        box.innerHTML = '<p style="color:#dc2626;">No booking ID provided.</p>';
+        return;
+    }
+
+    const { data: booking, error } = await apiClient.get(`/bookings/${bookingId}/`);
+
+    if (error || !booking) {
+        box.innerHTML = `<p style="color:#dc2626;">Could not find booking reference #BK-${bookingId}.</p>`;
+        return;
+    }
+
+    const start = new Date(booking.start_at);
+    const end = new Date(booking.end_at);
+    const dateStr = start.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    const timeStr = `${start.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})} – ${end.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}`;
+
+    box.innerHTML = `
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:14px;">
+            <div><strong>Booking Reference:</strong></div>
+            <div><span style="font-family:monospace;font-weight:bold;color:#2563eb;">#BK-${booking.booking_id}</span></div>
+
+            <div><strong>Resource:</strong></div>
+            <div>${booking.resource?.room_code || '—'} (${booking.resource?.resource_type} • ${booking.resource?.block || 'Main'})</div>
+
+            <div><strong>Date:</strong></div>
+            <div>${dateStr}</div>
+
+            <div><strong>Time Interval:</strong></div>
+            <div>${timeStr}</div>
+
+            <div><strong>Booking Type:</strong></div>
+            <div>${booking.booking_type}</div>
+
+            <div><strong>Expected Headcount:</strong></div>
+            <div>${booking.headcount ? booking.headcount + ' attendees' : 'Not specified'}</div>
+
+            <div><strong>Purpose:</strong></div>
+            <div>${booking.purpose}</div>
+
+            <div><strong>Approval Status:</strong></div>
+            <div><span class="t3-badge t3-badge-pending">${booking.status} — Awaiting Admin Approval</span></div>
+        </div>
+        <div style="margin-top:16px;padding-top:12px;border-top:1px solid #e5e7eb;font-size:12px;color:#6b7280;">
+            ℹ️ You will receive an on-screen bell notification once the administrator reviews and decides on your request.
+        </div>
+    `;
+}
+</script>
+</body>
+</html>

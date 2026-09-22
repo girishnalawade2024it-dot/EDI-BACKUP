@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Book Resource — Faculty Portal</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+<link rel="stylesheet" href="../assets/css/t3-styles.css">
+</head>
+<body>
+<div class="container">
+    <aside class="sidebar">
+        <div class="logo">🎓 Faculty Portal</div>
+        <nav class="nav">
+            <a href="dashboard.html">Dashboard</a>
+            <a href="resources.html" class="active">Book Resource</a>
+            <a href="history.html">Booking History</a>
+            <a href="profile.html">Profile</a>
+            <a href="../login.html">Logout</a>
+        </nav>
+    </aside>
+
+    <main class="main">
+        <div class="topbar">
+            <h2>New Booking Request</h2>
+            <div id="topbar-user">Faculty Member</div>
+        </div>
+
+        <!-- Feedback Alert Container -->
+        <div id="feedback-alert" style="display:none;margin-bottom:16px;padding:14px;border-radius:8px;font-size:14px;"></div>
+
+        <!-- Conflict & Alternative Resource Card -->
+        <div id="conflict-card" class="card" style="display:none;border-left:4px solid #ef4444;background:#fef2f2;">
+            <h3 style="color:#b91c1c;margin:0 0 8px 0;">⚠️ Schedule Conflict Detected</h3>
+            <p id="conflict-msg" style="color:#7f1d1d;margin:0 0 12px 0;"></p>
+            
+            <div id="alternatives-section" style="display:none;">
+                <h4 style="color:#1e3a8a;margin:12px 0 8px 0;">💡 Suggested Alternative Resources (Same Time Window):</h4>
+                <div id="alternatives-list" style="display:flex;gap:12px;flex-wrap:wrap;"></div>
+            </div>
+        </div>
+
+        <div class="card">
+            <form id="booking-form">
+                <div class="form-group">
+                    <label style="font-weight:600;">Select Resource *</label>
+                    <select id="book-resource" class="form-control" required style="width:100%;padding:10px;border:1px solid #d1d5db;border-radius:6px;font-size:14px;">
+                        <option value="">Loading resources…</option>
+                    </select>
+                    <small id="res-capacity-hint" style="color:#6b7280;margin-top:4px;display:block;"></small>
+                </div>
+
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label style="font-weight:600;">Booking Type *</label>
+                        <select id="book-type" style="width:100%;padding:10px;border:1px solid #d1d5db;border-radius:6px;">
+                            <option value="ACADEMIC">Academic Lecture / Practical</option>
+                            <option value="EVENT">Department Event / Seminar</option>
+                            <option value="MAINTENANCE">Maintenance / Setup</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label style="font-weight:600;">Expected Headcount</label>
+                        <input type="number" id="book-headcount" min="1" max="500" placeholder="e.g. 40" style="width:100%;padding:10px;border:1px solid #d1d5db;border-radius:6px;">
+                    </div>
+                </div>
+
+                <div class="grid-3">
+                    <div class="form-group">
+                        <label style="font-weight:600;">Date *</label>
+                        <input type="date" id="book-date" required style="width:100%;padding:10px;border:1px solid #d1d5db;border-radius:6px;">
+                    </div>
+
+                    <div class="form-group">
+                        <label style="font-weight:600;">Start Time (08:00 – 17:30) *</label>
+                        <input type="time" id="book-start" min="08:00" max="17:30" step="1800" required style="width:100%;padding:10px;border:1px solid #d1d5db;border-radius:6px;">
+                    </div>
+
+                    <div class="form-group">
+                        <label style="font-weight:600;">End Time (08:30 – 18:00) *</label>
+                        <input type="time" id="book-end" min="08:30" max="18:00" step="1800" required style="width:100%;padding:10px;border:1px solid #d1d5db;border-radius:6px;">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label style="font-weight:600;">Purpose of Booking *</label>
+                    <textarea id="book-purpose" rows="3" placeholder="Specify course code, topic, or event description..." required style="width:100%;padding:10px;border:1px solid #d1d5db;border-radius:6px;font-size:14px;font-family:inherit;"></textarea>
+                </div>
+
+                <div style="display:flex;gap:12px;margin-top:20px;align-items:center;">
+                    <button type="submit" id="btn-submit-booking" class="btn" style="padding:10px 24px;font-size:15px;">Submit Booking Request</button>
+                    <a href="resources.html" class="btn btn-secondary">Cancel</a>
+                    <span id="submit-spinner" class="t3-stat-loading" style="display:none;margin-left:8px;"></span>
+                </div>
+            </form>
+        </div>
+    </main>
+</div>
+
+<script src="../assets/js/app.js"></script>
+<script type="module" src="../assets/js/t3-notifications.js"></script>
+<script type="module">
+import { apiClient } from '../assets/js/api-client.js';
+import { requireAuth, populateTopbar } from '../assets/js/auth.js';
+import { submitBooking, suggestAlternatives } from '../assets/js/booking-engine.js';
+import { CONFIG, todayLocalISO } from '../assets/js/config.js';
+
+const session = requireAuth('Faculty');
+if (session) {
+    populateTopbar();
+    initBookingForm();
+}
+
+let resourcesMap = {};
+
+async function initBookingForm() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const paramResId = urlParams.get('resource_id');
+    const paramDate  = urlParams.get('date');
+    const paramStart = urlParams.get('start');
+    const paramEnd   = urlParams.get('end');
+
+    const todayStr = todayLocalISO();
+    const dateInput = document.getElementById('book-date');
+    dateInput.min = todayStr;
+    dateInput.value = paramDate || todayStr;
+
+    if (paramStart) document.getElementById('book-start').value = paramStart;
+    else document.getElementById('book-start').value = '09:00';
+
+    if (paramEnd) document.getElementById('book-end').value = paramEnd;
+    else document.getElementById('book-end').value = '11:00';
+
+    // Load resources
+    const { data, error } = await apiClient.get('/resources/');
+    const resources = data ? data.filter(r => r.status === 'ACTIVE').sort((a, b) => a.room_code.localeCompare(b.room_code)) : [];
+
+    const resSelect = document.getElementById('book-resource');
+    resSelect.innerHTML = '<option value="">-- Select a Resource --</option>';
+
+    (resources || []).forEach(r => {
+        resourcesMap[r.resource_id] = r;
+        const opt = document.createElement('option');
+        opt.value = r.resource_id;
+        opt.textContent = `${r.room_code} — ${r.resource_type} (${r.block || 'Main'})`;
+        if (paramResId == r.resource_id) opt.selected = true;
+        resSelect.appendChild(opt);
+    });
+
+    function updateCapacityHint() {
+        const selId = resSelect.value;
+        const hint = document.getElementById('res-capacity-hint');
+        if (selId && resourcesMap[selId]) {
+            const r = resourcesMap[selId];
+            hint.textContent = `Capacity: ${r.capacity ? r.capacity + ' persons' : 'Flexible'} | Notes: ${r.notes || 'None'}`;
+        } else {
+            hint.textContent = '';
+        }
+    }
+
+    resSelect.addEventListener('change', updateCapacityHint);
+    updateCapacityHint();
+
+    document.getElementById('booking-form').addEventListener('submit', handleBookingSubmit);
+}
+
+async function handleBookingSubmit(e) {
+    e.preventDefault();
+
+    const alertEl     = document.getElementById('feedback-alert');
+    const conflictCard = document.getElementById('conflict-card');
+    const conflictMsg = document.getElementById('conflict-msg');
+    const altSection  = document.getElementById('alternatives-section');
+    const altList     = document.getElementById('alternatives-list');
+    const submitBtn   = document.getElementById('btn-submit-booking');
+    const spinner     = document.getElementById('submit-spinner');
+
+    alertEl.style.display = 'none';
+    conflictCard.style.display = 'none';
+    altSection.style.display = 'none';
+
+    const resourceId = parseInt(document.getElementById('book-resource').value, 10);
+    const bookingType = document.getElementById('book-type').value;
+    const dateStr    = document.getElementById('book-date').value;
+    const startTime  = document.getElementById('book-start').value;
+    const endTime    = document.getElementById('book-end').value;
+    const headcountVal = document.getElementById('book-headcount').value;
+    const headcount  = headcountVal ? parseInt(headcountVal, 10) : null;
+    const purpose    = document.getElementById('book-purpose').value.trim();
+
+    if (!resourceId) {
+        alert('Please select a resource.');
+        return;
+    }
+
+    const startAt = `${dateStr}T${startTime}:00`;
+    const endAt   = `${dateStr}T${endTime}:00`;
+
+    submitBtn.disabled = true;
+    spinner.style.display = 'inline-block';
+
+    try {
+        const result = await submitBooking({
+            userId: session.userId,
+            resourceId,
+            bookingType,
+            startAt,
+            endAt,
+            purpose,
+            headcount
+        });
+
+        if (result.success) {
+            // Redirect to confirmation page
+            window.location.href = `confirmation.html?booking_id=${result.bookingId}`;
+        } else {
+            submitBtn.disabled = false;
+            spinner.style.display = 'none';
+
+            if (result.code === 'SLOT_TAKEN') {
+                conflictCard.style.display = 'block';
+                conflictMsg.innerHTML = `<strong>${result.message}</strong><br>Another approved booking occupies this time interval.`;
+
+                // Search for alternatives
+                const currentRes = resourcesMap[resourceId];
+                if (currentRes) {
+                    const alts = await suggestAlternatives(currentRes.resource_type, startAt, endAt, resourceId);
+                    if (alts.length > 0) {
+                        altSection.style.display = 'block';
+                        altList.innerHTML = alts.map(a => `
+                            <div style="background:#fff;border:1px solid #bfdbfe;padding:10px 14px;border-radius:6px;font-size:13px;">
+                                <strong>${a.room_code}</strong> (${a.block || 'Main'})<br>
+                                <span style="color:#6b7280;">Capacity: ${a.capacity || 'Flexible'}</span><br>
+                                <button type="button" class="btn btn-sm select-alt-btn" data-id="${a.resource_id}" style="margin-top:6px;padding:3px 8px;font-size:12px;">Switch to this</button>
+                            </div>
+                        `).join('');
+
+                        altList.querySelectorAll('.select-alt-btn').forEach(btn => {
+                            btn.addEventListener('click', () => {
+                                document.getElementById('book-resource').value = btn.dataset.id;
+                                conflictCard.style.display = 'none';
+                                alertEl.style.display = 'block';
+                                alertEl.style.background = '#eff6ff';
+                                alertEl.style.color = '#1e40af';
+                                alertEl.textContent = 'Switched to alternative resource. Click Submit to proceed.';
+                            });
+                        });
+                    }
+                }
+            } else {
+                alertEl.style.display = 'block';
+                alertEl.style.background = '#fef2f2';
+                alertEl.style.color = '#b91c1c';
+                alertEl.textContent = result.message || 'Booking submission failed.';
+            }
+        }
+    } catch (err) {
+        submitBtn.disabled = false;
+        spinner.style.display = 'none';
+        alertEl.style.display = 'block';
+        alertEl.style.background = '#fef2f2';
+        alertEl.style.color = '#b91c1c';
+        alertEl.textContent = err.message || 'An unexpected error occurred.';
+    }
+}
+</script>
+</body>
+</html>

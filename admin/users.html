@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>User Management</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+<link rel="stylesheet" href="../assets/css/t3-styles.css">
+</head>
+<body>
+<div class="container">
+<aside class="sidebar">
+<div class="logo">🛠️ Admin Panel</div>
+<nav class="nav">
+<a href="dashboard.html">Dashboard</a>
+<a href="users.html" class="active">Users</a>
+<a href="labs.html">Laboratories</a>
+<a href="classrooms.html">Classrooms</a>
+<a href="resources.html">Resources</a>
+<a href="conflicts.html">Audit Log</a>
+<a href="reports.html">Reports</a>
+<a href="profile.html">Profile</a>
+<a href="../login.html">Logout</a>
+</nav>
+</aside>
+<main class="main">
+<div class="topbar">
+<h2>User Management</h2>
+<div id="topbar-user"></div>
+</div>
+
+<div class="card">
+<div class="t3-section-header" style="margin-bottom:14px;">
+    <h3>All Users</h3>
+    <span id="user-count" style="font-size:13px;color:#6b7280;"></span>
+</div>
+<div class="t3-table-wrap">
+<table>
+    <thead>
+        <tr><th>#</th><th>Name</th><th>Email</th><th>Role</th><th>Last Login</th></tr>
+    </thead>
+    <tbody id="users-tbody">
+        <tr><td colspan="5"><span class="t3-stat-loading" style="display:block;margin:16px auto;"></span></td></tr>
+    </tbody>
+</table>
+</div>
+</div>
+</main>
+</div>
+
+<script src="../assets/js/app.js"></script>
+<script type="module" src="../assets/js/t3-notifications.js"></script>
+<script type="module">
+import { requireAuth, populateTopbar } from '../assets/js/auth.js';
+import { apiClient }                   from '../assets/js/api-client.js';
+import { fmtDateTime }                 from '../assets/js/config.js';
+
+requireAuth('Admin');
+populateTopbar();
+
+async function loadUsers() {
+    const tbody = document.getElementById('users-tbody');
+    const { data: allUsers, error } = await apiClient.get('/users/');
+    const data = allUsers ? allUsers.sort((a, b) => a.user_id - b.user_id) : null;
+
+    if (error) {
+        tbody.innerHTML = `<tr><td colspan="5"><div class="t3-error">${error.message}</div></td></tr>`;
+        return;
+    }
+
+    document.getElementById('user-count').textContent = `${data.length} total`;
+    tbody.innerHTML = data.map(u => `
+        <tr>
+            <td style="color:#9ca3af;">${u.user_id}</td>
+            <td><strong>${u.name}</strong></td>
+            <td>${u.email}</td>
+            <td><span class="t3-badge ${u.role?.role_name === 'Admin' ? 't3-badge-approved' : u.role?.role_name === 'Lab Assistant' ? 't3-badge-pending' : 't3-badge-completed'}">${u.role?.role_name ?? '—'}</span></td>
+            <td style="font-size:12px;color:#6b7280;">${fmtDateTime(u.last_login_at)}</td>
+        </tr>
+    `).join('');
+}
+
+loadUsers();
+</script>
+</body>
+</html>
