@@ -628,6 +628,347 @@ function exportInsightfulLabCSV() {
     downloadCSVBlob(fullCsv, `executive_lab_utilisation_report_${new Date().toISOString().slice(0, 10)}.csv`);
 }
 
+// ── GROQ CONSOLE AI INTEGRATION STATE & CLIENT ────────────────
+let groqAnalysisResult = null;
+let groqModelUsed = '';
+
+async function fetchGroqInsights(apiKey, model) {
+    if (!detailedLabReportData || detailedLabReportData.length === 0) {
+        throw new Error('No facility data loaded. Please apply filters first.');
+    }
+
+    const s = executiveSummaryData;
+    const topFacilities = detailedLabReportData.slice(0, 4).map(f => ({
+        room: f.room_code,
+        name: f.facility_name,
+        type: f.resource_type,
+        util_pct: f.utilisation_pct.toFixed(1) + '%',
+        booked_hrs: f.booked_hours.toFixed(1),
+        idle_hrs: f.idle_hours.toFixed(1),
+        headcount: f.headcount_served,
+        status: f.status_label
+    }));
+
+    const underutilised = detailedLabReportData
+        .filter(f => f.utilisation_pct < 25.0)
+        .slice(0, 3)
+        .map(f => ({
+            room: f.room_code,
+            name: f.facility_name,
+            util_pct: f.utilisation_pct.toFixed(1) + '%',
+            idle_hrs: f.idle_hours.toFixed(1)
+        }));
+
+    const metricsPayload = {
+        reporting_period: s.dateRange || 'All Time',
+        reporting_days: s.reportingDays || 5,
+        total_facilities: s.totalFacilities || 0,
+        campus_average_utilisation: `${s.campusUtilPct || '0.0'}%`,
+        total_booked_hours: s.totalBookedHours || '0.0',
+        total_available_hours: s.totalAvailableHours || '0.0',
+        total_idle_hours: s.totalIdleHours || '0.0',
+        total_students_headcount: s.totalHeadcount || 0,
+        contended_facilities: topFacilities,
+        underutilised_facilities: underutilised
+    };
+
+    const systemPrompt = `You are a Senior Higher-Education Campus Resource Auditor and Operations Analyst.
+Analyze the provided campus facility utilisation data and provide a concise, high-impact executive brief.
+Your response MUST be organized into these three distinct numbered sections:
+1. Executive Assessment & Contention Bottlenecks (highlight peak facilities, strain points)
+2. Facility Load Rebalancing Strategy (recommend shifts from contended to underutilised labs)
+3. Actionable Administrative Recommendations (concrete timetable/slot adjustments)
+Keep your analysis executive-ready, professional, and within 200-250 words. Do not use markdown headers larger than ###.`;
+
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiKey.trim()}`
+        },
+        body: JSON.stringify({
+            model: model || 'llama-3.3-70b-versatile',
+            messages: [
+                { role: 'system', content: systemPrompt },
+                { role: 'user', content: `Campus Resource Utilisation Dataset:\n${JSON.stringify(metricsPayload, null, 2)}` }
+            ],
+            temperature: 0.3,
+            max_tokens: 650
+        })
+    });
+
+    if (!response.ok) {
+        let errMsg = `Groq API Error (${response.status})`;
+        try {
+            const errData = await response.json();
+            if (errData?.error?.message) {
+                errMsg = errData.error.message;
+            }
+        } catch (_) {}
+        if (response.status === 401) {
+            errMsg = 'Invalid Groq API Key. Please verify your key at console.groq.com.';
+        } else if (response.status === 429) {
+            errMsg = 'Groq rate limit exceeded. Please wait a moment or try another model.';
+        }
+        throw new Error(errMsg);
+    }
+
+    const resJson = await response.json();
+    const insights = resJson.choices?.[0]?.message?.content;
+    if (!insights) {
+        throw new Error('Groq returned an empty response. Please try again.');
+    }
+
+    return insights;
+}
+
+// ── DETAILED PDF EXPORT (A4 LANDSCAPE WITH AUTOTABLE) ────────
+function exportLabUtilisationPDF() {
+    if (!detailedLabReportData || detailedLabReportData.length === 0) {
+        alert('No lab utilisation data available to export.');
+        return;
+    }
+
+    if (!window.jspdf || !window.jspdf.jsPDF) {
+        alert('PDF generator library is loading. Please try again in a few moments.');
+        return;
+    }
+
+    const { jsPDF } = window.jspdf;
+    // A4 Landscape: 297mm width x 210mm height
+    const doc = new jsPDF('l', 'mm', 'a4');
+    const s = executiveSummaryData;
+    const nowStr = new Date().toLocaleString('en-IN');
+    const dateRangeStr = s.dateRange || 'All Time';
+
+    // 1. Header Banner (Navy #1e3a8a)
+    doc.setFillColor(30, 58, 138);
+    doc.rect(14, 10, 269, 22, 'F');
+
+    // Title & Subtitle inside banner
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(13);
+    doc.setTextColor(255, 255, 255);
+    doc.text('CAMPUS RESOURCE UTILISATION AUDIT & CAPACITY REPORT', 20, 19);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8.5);
+    doc.setTextColor(219, 234, 254);
+    doc.text('Executive Facility Operations & Laboratory Contention Analytics | EDI Booking Portal', 20, 26);
+
+    // Meta right aligned in banner
+    doc.setFontSize(7.5);
+    doc.setTextColor(241, 245, 249);
+    doc.text(`Generated: ${nowStr}`, 275, 18, { align: 'right' });
+    doc.text(`Period: ${dateRangeStr} (${s.reportingDays || 0} days)`, 275, 25, { align: 'right' });
+
+    // 2. Executive KPI Summary Cards (5 Cards across 269mm)
+    const cardY = 36;
+    const cardH = 15;
+    const cardGap = 4;
+    const cardW = (269 - (4 * cardGap)) / 5; // ~50.6mm
+
+    const kpiCards = [
+        { label: 'CAMPUS FACILITIES', val: `${s.totalFacilities || 0}`, sub: `${s.totalLabs || 0} Labs, ${s.totalClassrooms || 0} Rooms` },
+        { label: 'AVG UTILISATION', val: `${s.campusUtilPct || '0.0'}%`, sub: `Peak: ${s.highestFacility || '—'}` },
+        { label: 'BOOKED CAPACITY', val: `${s.totalBookedHours || '0.0'} hrs`, sub: 'Approved bookings' },
+        { label: 'IDLE CAPACITY', val: `${s.totalIdleHours || '0.0'} hrs`, sub: 'Available to rebalance' },
+        { label: 'STUDENTS SERVED', val: `${s.totalHeadcount || 0}`, sub: 'Headcount throughput' }
+    ];
+
+    kpiCards.forEach((c, idx) => {
+        const cx = 14 + idx * (cardW + cardGap);
+        // Card background
+        doc.setFillColor(248, 250, 252);
+        doc.setDrawColor(226, 232, 240);
+        doc.roundedRect(cx, cardY, cardW, cardH, 2, 2, 'FD');
+
+        // Card Label
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(6.5);
+        doc.setTextColor(100, 116, 139);
+        doc.text(c.label, cx + 4, cardY + 4.5);
+
+        // Card Value
+        doc.setFontSize(10.5);
+        doc.setTextColor(15, 23, 42);
+        doc.text(c.val, cx + 4, cardY + 9.5);
+
+        // Card Subtitle
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(6);
+        doc.setTextColor(148, 163, 184);
+        doc.text(c.sub, cx + 4, cardY + 13);
+    });
+
+    let currentY = 55;
+
+    // 3. AI Insights Callout Box (Groq or Algorithmic Brief)
+    if (groqAnalysisResult) {
+        doc.setFillColor(240, 253, 244); // #f0fdf4
+        doc.setDrawColor(34, 197, 94);   // #22c55e
+        doc.setLineWidth(0.5);
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(8.5);
+        doc.setTextColor(21, 128, 61);
+
+        const aiTitle = `🤖 Groq AI Strategic Analysis & Scheduling Recommendations (${groqModelUsed || 'Groq Cloud LLM'})`;
+        const splitText = doc.splitTextToSize(groqAnalysisResult, 257);
+        const aiBoxHeight = 10 + (splitText.length * 3.4);
+
+        // Draw callout container
+        doc.roundedRect(14, currentY, 269, aiBoxHeight, 2, 2, 'FD');
+        doc.text(aiTitle, 18, currentY + 6);
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(7.5);
+        doc.setTextColor(20, 83, 45);
+        doc.text(splitText, 18, currentY + 11);
+
+        currentY += aiBoxHeight + 5;
+    } else {
+        // Algorithmic summary note
+        doc.setFillColor(241, 245, 249);
+        doc.setDrawColor(203, 213, 225);
+        doc.roundedRect(14, currentY, 269, 10, 2, 2, 'FD');
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(7.5);
+        doc.setTextColor(51, 65, 85);
+        const algoText = `Capacity Insight: Campus avg utilisation is ${s.campusUtilPct || '0.0'}%. Peak contended facility: ${s.highestFacility || '—'}. Optimal rebalance target: ${s.lowestLab || '—'}. [Tip: Click '✨ AI Insights (Groq)' to generate LLM strategic analysis in this report]`;
+        doc.text(algoText, 18, currentY + 6.5);
+
+        currentY += 14;
+    }
+
+    // If remaining space on Page 1 is too small for table header + rows, start table on Page 2
+    let tableStartY = currentY;
+    if (currentY > 125) {
+        doc.addPage();
+        tableStartY = 16;
+    }
+
+    // 4. Tabular Data Preparation
+    const tableColumns = [
+        { header: 'Room Code', dataKey: 'room_code' },
+        { header: 'Facility Name & Block', dataKey: 'facility' },
+        { header: 'Type', dataKey: 'type' },
+        { header: 'Seats / Equipment', dataKey: 'specs' },
+        { header: 'Booked', dataKey: 'booked' },
+        { header: 'Available', dataKey: 'available' },
+        { header: 'Idle', dataKey: 'idle' },
+        { header: 'Utilisation', dataKey: 'util_pct' },
+        { header: 'Status', dataKey: 'status' },
+        { header: 'Strategic Recommendation', dataKey: 'recommendation' }
+    ];
+
+    const tableRows = detailedLabReportData.map(f => {
+        let rec = "Operating at healthy optimal capacity.";
+        if (f.booked_hours === 0) {
+            rec = "100% idle. Available for surplus practicals or maintenance.";
+        } else if (f.utilisation_pct >= 65.0) {
+            rec = "High contention. Shift parallel batches or extend operational hours.";
+        } else if (f.utilisation_pct < 25.0) {
+            rec = "Underutilised. Shift load from contended facilities to balance wear.";
+        }
+
+        return {
+            room_code: f.room_code,
+            facility: `${f.facility_name}\nBlock ${f.block}`,
+            type: f.resource_type,
+            specs: `${f.capacity} Seats\n${f.has_machines ? `(${f.machine_count} PCs - Dual Boot)` : '(No Workstations)'}`,
+            booked: `${f.booked_hours.toFixed(1)} hrs`,
+            available: `${f.available_hours.toFixed(1)} hrs`,
+            idle: `${f.idle_hours.toFixed(1)} hrs`,
+            util_pct: `${f.utilisation_pct.toFixed(1)}%`,
+            status: f.status_label,
+            recommendation: rec
+        };
+    });
+
+    // 5. Draw AutoTable
+    doc.autoTable({
+        startY: tableStartY,
+        margin: { left: 14, right: 14, top: 16, bottom: 16 },
+        columns: tableColumns,
+        body: tableRows,
+        theme: 'striped',
+        showHead: 'everyPage',
+        headStyles: {
+            fillColor: [30, 58, 138],
+            textColor: 255,
+            fontSize: 7.5,
+            fontStyle: 'bold',
+            halign: 'center',
+            valign: 'middle'
+        },
+        styles: {
+            fontSize: 7.2,
+            cellPadding: 2.2,
+            valign: 'middle',
+            textColor: [15, 23, 42],
+            overflow: 'linebreak'
+        },
+        columnStyles: {
+            room_code: { cellWidth: 20, fontStyle: 'bold', halign: 'center' },
+            facility: { cellWidth: 40 },
+            type: { cellWidth: 20, halign: 'center' },
+            specs: { cellWidth: 28 },
+            booked: { cellWidth: 18, halign: 'right', fontStyle: 'bold' },
+            available: { cellWidth: 18, halign: 'right' },
+            idle: { cellWidth: 18, halign: 'right' },
+            util_pct: { cellWidth: 20, halign: 'center', fontStyle: 'bold' },
+            status: { cellWidth: 25, halign: 'center' },
+            recommendation: { cellWidth: 'auto' }
+        },
+        alternateRowStyles: {
+            fillColor: [248, 250, 252]
+        },
+        didParseCell: function (data) {
+            if (data.section === 'body') {
+                if (data.column.dataKey === 'util_pct') {
+                    const pctVal = parseFloat(data.cell.raw);
+                    if (pctVal >= 65.0) {
+                        data.cell.styles.textColor = [185, 28, 28]; // Red
+                    } else if (pctVal >= 25.0) {
+                        data.cell.styles.textColor = [21, 128, 61]; // Green
+                    } else {
+                        data.cell.styles.textColor = [194, 65, 12]; // Orange
+                    }
+                }
+                if (data.column.dataKey === 'status') {
+                    const st = data.cell.raw;
+                    data.cell.styles.fontStyle = 'bold';
+                    if (st === 'High Demand') {
+                        data.cell.styles.textColor = [185, 28, 28];
+                    } else if (st === 'Optimal') {
+                        data.cell.styles.textColor = [21, 128, 61];
+                    } else if (st === 'Underutilised') {
+                        data.cell.styles.textColor = [194, 65, 12];
+                    }
+                }
+            }
+        },
+        didDrawPage: function (data) {
+            // Footer on every page
+            const totalPages = doc.internal.getNumberOfPages();
+            doc.setDrawColor(226, 232, 240);
+            doc.setLineWidth(0.3);
+            doc.line(14, 202, 283, 202);
+
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(7);
+            doc.setTextColor(148, 163, 184);
+            doc.text('Campus Resource Management Portal — Confidential Operational Audit Document', 14, 206);
+            doc.text(`Page ${data.pageNumber} of ${totalPages}`, 283, 206, { align: 'right' });
+        }
+    });
+
+    const fileDate = new Date().toISOString().slice(0, 10);
+    doc.save(`executive_lab_utilisation_report_${fileDate}.pdf`);
+}
+
 // ── Report 4: Resource Maintenance & Unavailable Time Slots ──
 let maintenanceReportData = [];
 
@@ -1003,19 +1344,114 @@ document.addEventListener('DOMContentLoaded', async () => {
             loadAllReports();
         });
 
-    // CSV Export buttons
+    // CSV & PDF Export buttons
     document.getElementById('t3-export-r1')
         ?.addEventListener('click', () => exportStandardCSV(report1Data, 'booking_count_report.csv'));
     document.getElementById('t3-export-r2')
         ?.addEventListener('click', exportInsightfulLabCSV);
+    document.getElementById('t3-export-r2-pdf')
+        ?.addEventListener('click', exportLabUtilisationPDF);
     document.getElementById('t3-export-r3')
         ?.addEventListener('click', () => exportStandardCSV(report3Data, 'audit_activity_report.csv'));
     document.getElementById('t3-export-maint')
         ?.addEventListener('click', () => exportStandardCSV(maintenanceReportData, 'maintenance_report_' + new Date().toISOString().slice(0, 10) + '.csv'));
 
+    // ── Groq Modal Interactions ──
+    const groqModal = document.getElementById('groq-modal');
+    const openGroqBtn = document.getElementById('t3-open-groq-modal');
+    const closeGroqBtn = document.getElementById('btn-close-groq-modal');
+    const cancelGroqBtn = document.getElementById('btn-cancel-groq');
+    const dismissBannerBtn = document.getElementById('btn-dismiss-groq');
+    const groqForm = document.getElementById('groq-config-form');
+
+    if (openGroqBtn && groqModal) {
+        openGroqBtn.addEventListener('click', () => {
+            const savedKey = localStorage.getItem('edi_groq_api_key');
+            const keyInput = document.getElementById('groq-api-key');
+            if (savedKey && keyInput && !keyInput.value) {
+                keyInput.value = savedKey;
+            }
+            const errorAlert = document.getElementById('groq-error-alert');
+            if (errorAlert) errorAlert.style.display = 'none';
+            groqModal.style.display = 'flex';
+        });
+    }
+
+    const hideGroqModal = () => {
+        if (groqModal) groqModal.style.display = 'none';
+    };
+
+    closeGroqBtn?.addEventListener('click', hideGroqModal);
+    cancelGroqBtn?.addEventListener('click', hideGroqModal);
+
+    groqModal?.addEventListener('click', (e) => {
+        if (e.target === groqModal) hideGroqModal();
+    });
+
+    dismissBannerBtn?.addEventListener('click', () => {
+        const banner = document.getElementById('groq-insights-banner');
+        if (banner) banner.style.display = 'none';
+    });
+
+    groqForm?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const keyInput = document.getElementById('groq-api-key');
+        const modelInput = document.getElementById('groq-model-select');
+        const errorAlert = document.getElementById('groq-error-alert');
+        const spinner = document.getElementById('groq-spinner');
+        const runBtn = document.getElementById('btn-run-groq');
+
+        const key = keyInput?.value?.trim();
+        const model = modelInput?.value || 'llama-3.3-70b-versatile';
+
+        if (!key) {
+            if (errorAlert) {
+                errorAlert.style.display = 'block';
+                errorAlert.textContent = 'Please enter a valid Groq API key.';
+            }
+            return;
+        }
+
+        if (errorAlert) errorAlert.style.display = 'none';
+        if (spinner) spinner.style.display = 'inline-block';
+        if (runBtn) runBtn.disabled = true;
+
+        try {
+            const insights = await fetchGroqInsights(key, model);
+            groqAnalysisResult = insights;
+            groqModelUsed = model;
+
+            // Persist API key safely in localStorage
+            localStorage.setItem('edi_groq_api_key', key);
+
+            // Update UI Banner
+            const banner = document.getElementById('groq-insights-banner');
+            const contentEl = document.getElementById('groq-insights-content');
+            const badgeEl = document.getElementById('groq-model-badge');
+
+            if (contentEl) contentEl.textContent = insights;
+            if (badgeEl) badgeEl.textContent = model;
+            if (banner) {
+                banner.style.display = 'block';
+                banner.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+
+            hideGroqModal();
+        } catch (err) {
+            if (errorAlert) {
+                errorAlert.style.display = 'block';
+                errorAlert.textContent = err.message || 'Failed to generate insights from Groq.';
+            }
+        } finally {
+            if (spinner) spinner.style.display = 'none';
+            if (runBtn) runBtn.disabled = false;
+        }
+    });
+
     // Expose helpers globally
     window.loadAllReports = loadAllReports;
     window.loadMaintenanceReport = loadMaintenanceReport;
+    window.exportLabUtilisationPDF = exportLabUtilisationPDF;
 
     // Init maintenance management form and resources
     await initMaintenanceResources();
