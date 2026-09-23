@@ -7,8 +7,8 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-export const SUPABASE_URL      = 'https://vzrevunlustmcssdqqnw.supabase.co';
-export const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ6cmV2dW5sdXN0bWNzc2RxcW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgzNzU2NjYsImV4cCI6MjEwMzk1MTY2Nn0.7-1w7U3tJFLiGZUKWOXma433Lu61EQRkhD7MMdP4PpY';
+export const SUPABASE_URL      = 'https://scdnfyctuasyfardjbtr.supabase.co';
+export const SUPABASE_ANON_KEY = 'sb_publishable_WTuyluMnhmmFtzB5x3iZ-A_2TjLTX_R';
 
 export const isConfigured = Boolean(
     SUPABASE_URL &&
@@ -144,6 +144,18 @@ const SEED_DATA = {
         { notification_id: 2, user_id: 3, booking_id: 2, type: 'BOOKING_PENDING', title: 'Maintenance Pending', message: 'Your maintenance booking request is pending admin approval.', is_read: false, read_at: null, created_at: new Date(Date.now() - 72000000).toISOString() },
         { notification_id: 3, user_id: 2, booking_id: 3, type: 'BOOKING_DENIED', title: 'Booking Denied', message: 'Your booking request was denied: slot already taken.', is_read: false, read_at: null, created_at: new Date(Date.now() - 50000000).toISOString() },
         { notification_id: 4, user_id: 5, booking_id: 2, type: 'BOOKING_PENDING', title: 'New Pending Approval', message: 'A maintenance booking requires your administrative review.', is_read: false, read_at: null, created_at: new Date().toISOString() }
+    ],
+    resource_unavailability: [
+        {
+            id: 1,
+            resource_id: 5, // MB 407 A
+            start_at: '2026-09-25T10:00:00',
+            end_at:   '2026-09-25T12:00:00',
+            reason:   'Computer Servicing',
+            status:   'MAINTENANCE',
+            created_by: 5, // Admin User
+            created_at: new Date().toISOString()
+        }
     ]
 };
 
@@ -166,7 +178,7 @@ class LocalDB {
 }
 
 // Ensure database tables exist in localStorage
-['roles', 'users', 'resources', 'bookings', 'audit_logs', 'notifications'].forEach(t => LocalDB.get(t));
+['roles', 'users', 'resources', 'bookings', 'audit_logs', 'notifications', 'resource_unavailability'].forEach(t => LocalDB.get(t));
 
 // ── Query Builder that mirrors Supabase PostgREST Client ─────
 class MockQueryBuilder {
@@ -267,6 +279,11 @@ class MockQueryBuilder {
         return this;
     }
 
+    maybeSingle() {
+        this.isSingle = true;
+        return this;
+    }
+
     async _execute() {
         let items = LocalDB.get(this.tableName);
 
@@ -356,7 +373,7 @@ class MockQueryBuilder {
             // Join users
             if (this.selectSpec.includes('users')) {
                 const users = LocalDB.get('users');
-                const uId = copy.requested_by || copy.actor_user_id || copy.user_id;
+                const uId = copy.requested_by || copy.actor_user_id || copy.created_by || copy.user_id;
                 const userObj = users.find(u => u.user_id === uId);
                 copy.users = userObj ? { name: userObj.name, email: userObj.email } : null;
             }
@@ -414,8 +431,38 @@ if (isConfigured) {
 export const supabase = {
     from(tableName) {
         if (isConfigured && realClient) {
+            if (tableName === 'resource_unavailability') {
+                return new MockQueryBuilder(tableName);
+            }
             return realClient.from(tableName);
         }
         return new MockQueryBuilder(tableName);
+    },
+    get auth() {
+        if (isConfigured && realClient?.auth) {
+            return realClient.auth;
+        }
+        return {
+            async signInWithPassword({ email, password }) {
+                return { data: { user: null, session: null }, error: { message: 'Supabase client not configured or offline' } };
+            },
+            async signInWithOAuth({ provider, options }) {
+                return { data: null, error: { message: 'Supabase client not configured or offline' } };
+            },
+            async signOut() {
+                return { error: null };
+            },
+            async getSession() {
+                return { data: { session: null }, error: null };
+            },
+            async exchangeCodeForSession(code) {
+                return { data: { session: null }, error: null };
+            },
+            onAuthStateChange(callback) {
+                return { data: { subscription: { unsubscribe() {} } } };
+            }
+        };
     }
 };
+
+export { LocalDB, SEED_DATA };

@@ -55,7 +55,123 @@ export async function checkOverlap(resourceId, startAt, endAt) {
     const rows     = data || [];
     const approved = rows.filter(r => r.status === CONFIG.STATUS.APPROVED);
     const pending  = rows.filter(r => r.status === CONFIG.STATUS.PENDING);
+
     return { approved, pending };
+}
+
+// ── Maintenance conflict checker ─────────────────────────────
+export async function checkMaintenanceConflict(resourceId, startAt, endAt) {
+    try {
+        const { data, error } = await supabase
+            .from('resource_unavailability')
+            .select('id, resource_id, start_at, end_at, reason, status')
+            .eq('resource_id', parseInt(resourceId, 10))
+            .neq('status', 'CANCELLED')
+            .lt('start_at', endAt)
+            .gt('end_at', startAt);
+
+        if (error) {
+            console.warn('[BookingEngine] checkMaintenanceConflict error:', error.message);
+            return { hasConflict: false, conflict: null };
+        }
+
+        const records = data || [];
+        if (records.length > 0) {
+            return { hasConflict: true, conflict: records[0] };
+        }
+        return { hasConflict: false, conflict: null };
+    } catch (err) {
+        console.warn('[BookingEngine] checkMaintenanceConflict exception:', err);
+        return { hasConflict: false, conflict: null };
+    }
+}
+
+// ── Resource Time Slot Availability Engine ───────────────────
+// Checks both existing bookings and maintenance periods for every slot
+// Returns slot statuses: AVAILABLE, BOOKED, or MAINTENANCE
+export async function getResourceTimeSlotAvailability(resourceId, dateStr, slotDurationMinutes = CONFIG.SLOT_MINUTES || 30) {
+    const resId = parseInt(resourceId, 10);
+    const dayStart = `${dateStr}T00:00:00`;
+    const dayEnd   = `${dateStr}T23:59:59`;
+
+    // 1. Fetch bookings for resource on date
+    const { data: bookings } = await supabase
+        .from('bookings')
+        .select('booking_id, status, start_at, end_at, purpose, requested_by, users!bookings_requested_by_fkey(name)')
+        .eq('resource_id', resId)
+        .in('status', [CONFIG.STATUS.APPROVED, CONFIG.STATUS.PENDING])
+        .lt('start_at', dayEnd)
+        .gt('end_at', dayStart);
+
+    // 2. Fetch maintenance for resource on date
+    const { data: maintenances } = await supabase
+        .from('resource_unavailability')
+        .select('id, resource_id, start_at, end_at, reason, status')
+        .eq('resource_id', resId)
+        .neq('status', 'CANCELLED')
+        .lt('start_at', dayEnd)
+        .gt('end_at', dayStart);
+
+    const activeBookings = bookings || [];
+    const activeMaintenances = maintenances || [];
+
+    const startHour = CONFIG.OPERATING_HOURS.START_HOUR;
+    const endHour   = CONFIG.OPERATING_HOURS.END_HOUR;
+    const step      = slotDurationMinutes;
+
+    const results = [];
+    for (let h = startHour; h < endHour; h++) {
+        for (let m = 0; m < 60; m += step) {
+            const nextM = m + step;
+            const nextH = nextM >= 60 ? h + 1 : h;
+            const normM = nextM % 60;
+            if (nextH > endHour || (nextH === endHour && normM > 0)) break;
+
+            const startStr = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+            const endStr   = `${String(nextH).padStart(2, '0')}:${String(normM).padStart(2, '0')}`;
+            const slotStart = new Date(`${dateStr}T${startStr}:00`);
+            const slotEnd   = new Date(`${dateStr}T${endStr}:00`);
+
+            // Maintenance period check
+            const maint = activeMaintenances.find(maintItem => {
+                const mStart = new Date(maintItem.start_at);
+                const mEnd   = new Date(maintItem.end_at);
+                return mStart < slotEnd && mEnd > slotStart;
+            });
+
+            // Booking check
+            const booking = activeBookings.find(b => {
+                const bStart = new Date(b.start_at);
+                const bEnd   = new Date(b.end_at);
+                return bStart < slotEnd && bEnd > slotStart;
+            });
+
+            let status = 'AVAILABLE';
+            let reason = null;
+
+            if (maint) {
+                status = 'MAINTENANCE';
+                reason = maint.reason;
+            } else if (booking) {
+                status = 'BOOKED';
+                reason = booking.purpose || (booking.status === 'PENDING' ? 'Pending Approval' : 'Booked');
+            }
+
+            results.push({
+                slot: `${startStr}-${endStr}`,
+                start: startStr,
+                end: endStr,
+                start_at: `${dateStr}T${startStr}:00`,
+                end_at: `${dateStr}T${endStr}:00`,
+                status,
+                reason,
+                maintenance: maint || null,
+                booking: booking || null
+            });
+        }
+    }
+
+    return results;
 }
 
 // ── Alternative resource suggestions (SRS NFR-U2) ────────────
@@ -111,6 +227,22 @@ export async function submitBooking({
     const opE = CONFIG.OPERATING_HOURS.END_HOUR * 60;
     if (startMins < opS || endMins > opE) {
         return { success: false, code: 'OUTSIDE_HOURS', message: `Bookings must be within ${CONFIG.OPERATING_START}–${CONFIG.OPERATING_END}.` };
+    }
+
+    // Check maintenance / unavailability conflict (hard block with HTTP 409 Conflict)
+    try {
+        const maintConflict = await checkMaintenanceConflict(resourceId, startAt, endAt);
+        if (maintConflict.hasConflict) {
+            return {
+                success:  false,
+                status:   409,
+                code:     'MAINTENANCE_CONFLICT',
+                message:  'Resource is unavailable due to scheduled maintenance.',
+                conflict: maintConflict.conflict
+            };
+        }
+    } catch (e) {
+        return { success: false, code: 'CHECK_FAILED', message: e.message };
     }
 
     // FR-3.5: Check for APPROVED overlaps (hard block)
@@ -273,6 +405,18 @@ export async function approveBooking(bookingId, adminUserId, note = '') {
 
     if (!bk || bk.status !== CONFIG.STATUS.PENDING) {
         return { success: false, message: 'Booking is not in PENDING state.' };
+    }
+
+    // Check maintenance overlap at approval time
+    const maintConflict = await checkMaintenanceConflict(bk.resource_id, bk.start_at, bk.end_at);
+    if (maintConflict.hasConflict) {
+        return {
+            success:  false,
+            status:   409,
+            code:     'MAINTENANCE_CONFLICT',
+            message:  'Resource is unavailable due to scheduled maintenance.',
+            conflict: maintConflict.conflict
+        };
     }
 
     // Re-check overlap at approval time

@@ -102,6 +102,66 @@
                 </table>
             </div>
         </div>
+
+        <!-- ── All Labs Maintenance Schedule & Report ── -->
+        <div class="card" style="margin-top:24px;">
+            <div class="t3-section-header">
+                <h3>📊 Laboratory Maintenance Schedule &amp; Report</h3>
+                <button type="button" class="t3-export-btn" id="btn-export-maint-schedule">⬇ Export Maintenance Report (CSV)</button>
+            </div>
+            <p style="font-size:13px;color:#6b7280;margin-bottom:14px;">Complete schedule showing which laboratory is under maintenance for which specific dates, time slots, and technician assignments.</p>
+
+            <!-- Filter Controls -->
+            <div style="display:flex;gap:12px;flex-wrap:wrap;background:#f8fafc;padding:12px 14px;border-radius:8px;border:1px solid #e2e8f0;margin-bottom:16px;align-items:flex-end;">
+                <div style="flex:1;min-width:180px;">
+                    <label style="font-size:12px;font-weight:600;color:#475569;display:block;margin-bottom:4px;">Filter by Laboratory</label>
+                    <select id="maint-rep-lab" style="width:100%;padding:8px 10px;font-size:13px;border:1px solid #cbd5e1;border-radius:6px;">
+                        <option value="">All Laboratories</option>
+                    </select>
+                </div>
+                <div style="flex:1;min-width:140px;">
+                    <label style="font-size:12px;font-weight:600;color:#475569;display:block;margin-bottom:4px;">Date From</label>
+                    <input type="date" id="maint-rep-date-from" style="width:100%;padding:8px 10px;font-size:13px;border:1px solid #cbd5e1;border-radius:6px;">
+                </div>
+                <div style="flex:1;min-width:140px;">
+                    <label style="font-size:12px;font-weight:600;color:#475569;display:block;margin-bottom:4px;">Date To</label>
+                    <input type="date" id="maint-rep-date-to" style="width:100%;padding:8px 10px;font-size:13px;border:1px solid #cbd5e1;border-radius:6px;">
+                </div>
+                <div style="flex:1;min-width:140px;">
+                    <label style="font-size:12px;font-weight:600;color:#475569;display:block;margin-bottom:4px;">Status</label>
+                    <select id="maint-rep-status" style="width:100%;padding:8px 10px;font-size:13px;border:1px solid #cbd5e1;border-radius:6px;">
+                        <option value="">All Statuses</option>
+                        <option value="APPROVED">Approved / Scheduled</option>
+                        <option value="PENDING">Pending Approval</option>
+                        <option value="COMPLETED">Completed</option>
+                        <option value="CANCELLED">Cancelled</option>
+                    </select>
+                </div>
+                <div>
+                    <button type="button" id="btn-maint-rep-reset" class="btn btn-secondary" style="padding:8px 14px;font-size:13px;">Reset</button>
+                </div>
+            </div>
+
+            <div class="t3-table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Ref #</th>
+                            <th>Laboratory Room</th>
+                            <th>Date</th>
+                            <th>Time Slot</th>
+                            <th>Duration</th>
+                            <th>Maintenance Scope &amp; Details</th>
+                            <th>Technician / Staff</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="all-maint-tbody">
+                        <tr><td colspan="8"><span class="t3-stat-loading" style="display:block;margin:16px auto;"></span></td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </main>
 </div>
 
@@ -133,16 +193,48 @@ async function initRequestsPage() {
         .order('room_code');
 
     const labSelect = document.getElementById('req-lab');
+    const maintRepLab = document.getElementById('maint-rep-lab');
     labSelect.innerHTML = '<option value="">-- Select Laboratory --</option>';
+    if (maintRepLab) maintRepLab.innerHTML = '<option value="">All Laboratories</option>';
+
     (labs || []).forEach(l => {
         const opt = document.createElement('option');
         opt.value = l.resource_id;
         opt.textContent = `${l.room_code} (${l.block || 'Main'}) — Status: ${l.status}`;
         labSelect.appendChild(opt);
+
+        if (maintRepLab) {
+            const optRep = document.createElement('option');
+            optRep.value = l.resource_id;
+            optRep.textContent = `${l.room_code} (${l.block || 'Main'})`;
+            maintRepLab.appendChild(optRep);
+        }
     });
 
     document.getElementById('maintenance-form').addEventListener('submit', handleSubmitRequest);
+
+    // Wire Maintenance Schedule filters & export
+    document.getElementById('maint-rep-lab')?.addEventListener('change', loadAllMaintenanceReport);
+    document.getElementById('maint-rep-date-from')?.addEventListener('change', loadAllMaintenanceReport);
+    document.getElementById('maint-rep-date-to')?.addEventListener('change', loadAllMaintenanceReport);
+    document.getElementById('maint-rep-status')?.addEventListener('change', loadAllMaintenanceReport);
+    document.getElementById('btn-maint-rep-reset')?.addEventListener('click', () => {
+        const labEl = document.getElementById('maint-rep-lab');
+        const d1El = document.getElementById('maint-rep-date-from');
+        const d2El = document.getElementById('maint-rep-date-to');
+        const stEl = document.getElementById('maint-rep-status');
+        if (labEl) labEl.value = '';
+        if (d1El) d1El.value = '';
+        if (d2El) d2El.value = '';
+        if (stEl) stEl.value = '';
+        loadAllMaintenanceReport();
+    });
+    document.getElementById('btn-export-maint-schedule')?.addEventListener('click', () => {
+        exportAssistantCSV(allMaintenanceData, 'lab_maintenance_schedule_' + new Date().toISOString().slice(0, 10) + '.csv');
+    });
+
     loadRequestsList();
+    loadAllMaintenanceReport();
 }
 
 async function handleSubmitRequest(e) {
@@ -292,6 +384,145 @@ async function loadRequestsList() {
             }
         });
     });
+}
+
+// ── Complete Maintenance Schedule & Report ─────────────────────
+let allMaintenanceData = [];
+
+function exportAssistantCSV(rows, filename) {
+    if (!rows || rows.length === 0) {
+        alert('No maintenance data to export.');
+        return;
+    }
+    const headers = Object.keys(rows[0]);
+    const lines   = [
+        headers.join(','),
+        ...rows.map(row =>
+            headers.map(h => {
+                const val = row[h] ?? '';
+                const str = String(val).replace(/"/g, '""');
+                return /[",\n]/.test(str) ? `"${str}"` : str;
+            }).join(',')
+        ),
+    ];
+    const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const url  = URL.createObjectURL(blob);
+    const a    = Object.assign(document.createElement('a'), {
+        href: url,
+        download: filename,
+    });
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+}
+
+async function loadAllMaintenanceReport() {
+    const tbody = document.getElementById('all-maint-tbody');
+    if (!tbody) return;
+    tbody.innerHTML = '<tr><td colspan="8"><span class="t3-stat-loading" style="display:block;margin:16px auto;"></span></td></tr>';
+
+    const labFilter    = document.getElementById('maint-rep-lab')?.value;
+    const dateFrom     = document.getElementById('maint-rep-date-from')?.value;
+    const dateTo       = document.getElementById('maint-rep-date-to')?.value;
+    const statusFilter = document.getElementById('maint-rep-status')?.value;
+
+    let q = supabase
+        .from('bookings')
+        .select(`
+            booking_id,
+            resource_id,
+            booking_type,
+            status,
+            start_at,
+            end_at,
+            purpose,
+            decision_note,
+            resources ( room_code, block, resource_type ),
+            users!bookings_requested_by_fkey ( name, email )
+        `)
+        .eq('booking_type', 'MAINTENANCE')
+        .order('start_at', { ascending: false });
+
+    if (labFilter)    q = q.eq('resource_id', parseInt(labFilter, 10));
+    if (dateFrom)     q = q.gte('start_at', dateFrom);
+    if (dateTo)       q = q.lte('start_at', dateTo + 'T23:59:59');
+    if (statusFilter) q = q.eq('status', statusFilter);
+
+    const { data: records, error } = await q;
+
+    if (error) {
+        tbody.innerHTML = `<tr><td colspan="8" style="color:#dc2626;padding:16px;text-align:center;">Failed to load maintenance schedule: ${error.message}</td></tr>`;
+        return;
+    }
+
+    const rows = records || [];
+
+    allMaintenanceData = rows.map(r => {
+        const start = new Date(r.start_at);
+        const end   = new Date(r.end_at);
+        const dateStr = start.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+        const timeSlotStr = `${start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })} – ${end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}`;
+        const durationHrs = ((end - start) / (1000 * 60 * 60)).toFixed(1);
+
+        return {
+            'Ref #':               `#M-${r.booking_id}`,
+            'Laboratory Room':     r.resources?.room_code ? `${r.resources.room_code} (${r.resources.block || 'Main'})` : '—',
+            'Date':                dateStr,
+            'Time Slot':           timeSlotStr,
+            'Duration (hrs)':      durationHrs,
+            'Maintenance Scope':   r.purpose || 'Laboratory Servicing',
+            'Technician / Staff':  r.users?.name || 'Lab Staff',
+            'Status':              r.status,
+        };
+    });
+
+    if (rows.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:24px;color:#6b7280;">No maintenance blocks found matching the selected filters.</td></tr>';
+        return;
+    }
+
+    const badgeCls = {
+        APPROVED:  't3-badge-approved',
+        PENDING:   't3-badge-pending',
+        DENIED:    't3-badge-denied',
+        CANCELLED: 't3-badge-cancelled',
+        PREEMPTED: 't3-badge-preempted',
+        COMPLETED: 't3-badge-completed',
+    };
+
+    tbody.innerHTML = rows.map(r => {
+        const start = new Date(r.start_at);
+        const end   = new Date(r.end_at);
+        const dateStr = start.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+        const timeSlotStr = `${start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })} – ${end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}`;
+        const durationHrs = ((end - start) / (1000 * 60 * 60)).toFixed(1);
+
+        const roomCode = r.resources?.room_code || `Room #${r.resource_id}`;
+        const blockName = r.resources?.block ? `Block ${r.resources.block}` : 'Main';
+
+        return `
+            <tr>
+                <td style="font-weight:600;color:#6b7280;">#M-${r.booking_id}</td>
+                <td>
+                    <strong>🔬 ${roomCode}</strong>
+                    <div style="font-size:11px;color:#6b7280;">${blockName} • ${r.resources?.resource_type || 'Lab'}</div>
+                </td>
+                <td style="font-weight:500;white-space:nowrap;">📅 ${dateStr}</td>
+                <td style="font-weight:600;color:#1e40af;white-space:nowrap;">⏰ ${timeSlotStr}</td>
+                <td style="text-align:center;"><span class="t3-badge t3-badge-default" style="font-weight:600;">${durationHrs} hrs</span></td>
+                <td>
+                    <div style="font-size:13px;font-weight:500;">${r.purpose || 'Laboratory servicing & maintenance'}</div>
+                    ${r.decision_note ? `<div style="font-size:11px;color:#059669;margin-top:2px;">Note: ${r.decision_note}</div>` : ''}
+                </td>
+                <td>
+                    <div style="font-size:13px;font-weight:500;">${r.users?.name || 'Lab Staff'}</div>
+                    <div style="font-size:11px;color:#6b7280;">${r.users?.email || ''}</div>
+                </td>
+                <td><span class="t3-badge ${badgeCls[r.status] || 't3-badge-default'}">${r.status}</span></td>
+            </tr>
+        `;
+    }).join('');
 }
 </script>
 </body>

@@ -71,6 +71,14 @@
 </p>
 </div>
 
+<div class="card" style="margin-bottom:22px;">
+<h3>Maintenance Downtime</h3>
+<p style="font-size:30px;font-weight:bold;color:#d97706;" id="t3-stat-maint">
+    <span class="t3-stat-loading"></span>
+</p>
+<span id="t3-stat-maint-sub" style="font-size:12px;color:#6b7280;">0 slots scheduled</span>
+</div>
+
 </div>
 
 <!-- ── Filters ── -->
@@ -89,6 +97,15 @@
             <option value="">All Types</option>
             <option value="Lab">Lab</option>
             <option value="Classroom">Classroom</option>
+        </select>
+    </div>
+    <div class="t3-filter-group">
+        <label for="t3-filter-booking-type">Booking Type</label>
+        <select id="t3-filter-booking-type">
+            <option value="">All Booking Types</option>
+            <option value="ACADEMIC">Academic</option>
+            <option value="MAINTENANCE">Maintenance</option>
+            <option value="EVENT">Event</option>
         </select>
     </div>
     <div class="t3-filter-group">
@@ -183,11 +200,111 @@
 </div>
 </div>
 
+<!-- ── Admin Maintenance Management Card ── -->
+<div class="card" id="maint-management-card" style="border-left: 4px solid #ea580c;">
+    <div class="t3-section-header">
+        <h3>🔧 Schedule Resource Maintenance</h3>
+        <span style="font-size:12px;background:#ffedd5;color:#c2410c;padding:3px 8px;border-radius:4px;font-weight:600;">Admin Control</span>
+    </div>
+    <p style="font-size:13px;color:#6b7280;margin-bottom:14px;">Mark a lab or classroom as unavailable for maintenance or servicing. Conflicting booking requests during this period will be blocked with HTTP 409 Conflict.</p>
+    
+    <div id="maint-form-alert" style="display:none;padding:10px 14px;border-radius:6px;font-size:13px;margin-bottom:14px;"></div>
+
+    <form id="maint-schedule-form">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));gap:14px;align-items:flex-end;">
+            <div>
+                <label for="maint-input-resource" style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:4px;">Resource *</label>
+                <select id="maint-input-resource" required style="width:100%;padding:8px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;">
+                    <option value="">Select Resource...</option>
+                </select>
+            </div>
+            <div>
+                <label for="maint-input-date" style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:4px;">Date *</label>
+                <input type="date" id="maint-input-date" required style="width:100%;padding:8px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;">
+            </div>
+            <div>
+                <label for="maint-input-start" style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:4px;">Start Time *</label>
+                <input type="time" id="maint-input-start" required style="width:100%;padding:8px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;">
+            </div>
+            <div>
+                <label for="maint-input-end" style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:4px;">End Time *</label>
+                <input type="time" id="maint-input-end" required style="width:100%;padding:8px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;">
+            </div>
+            <div style="grid-column: span 2;">
+                <label for="maint-input-reason" style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:4px;">Maintenance Reason *</label>
+                <input type="text" id="maint-input-reason" required placeholder="e.g. Computer Servicing, Equipment Calibration" style="width:100%;padding:8px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;">
+            </div>
+            <div>
+                <button type="submit" class="btn" id="btn-save-maintenance" style="width:100%;height:38px;background:#ea580c;color:#fff;border:none;font-weight:600;">➕ Schedule Maintenance</button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- ── Report 4: Resource Maintenance & Unavailable Time Slots ── -->
+<div class="card">
+<div class="t3-section-header">
+    <h3>🛠️ Resource Maintenance & Unavailable Time Slots</h3>
+    <button class="t3-export-btn" id="t3-export-maint">⬇ Export CSV</button>
+</div>
+<p style="font-size:13px;color:#6b7280;margin-bottom:12px;">Detailed report displaying which resource is under maintenance and during which date and time slot it is unavailable.</p>
+
+<!-- Maintenance Filters -->
+<div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;background:#f9fafb;padding:12px;border-radius:8px;margin-bottom:14px;border:1px solid #e5e7eb;">
+    <div style="flex:1;min-width:140px;">
+        <label for="maint-filter-date" style="display:block;font-size:12px;font-weight:600;color:#4b5563;margin-bottom:4px;">Date</label>
+        <input type="date" id="maint-filter-date" style="width:100%;padding:6px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;">
+    </div>
+    <div style="flex:1;min-width:180px;">
+        <label for="maint-filter-resource" style="display:block;font-size:12px;font-weight:600;color:#4b5563;margin-bottom:4px;">Resource</label>
+        <select id="maint-filter-resource" style="width:100%;padding:6px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;">
+            <option value="">All Resources</option>
+        </select>
+    </div>
+    <div style="flex:1;min-width:140px;">
+        <label for="maint-filter-status" style="display:block;font-size:12px;font-weight:600;color:#4b5563;margin-bottom:4px;">Status</label>
+        <select id="maint-filter-status" style="width:100%;padding:6px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;">
+            <option value="">All Statuses</option>
+            <option value="MAINTENANCE">MAINTENANCE</option>
+            <option value="SCHEDULED">SCHEDULED</option>
+            <option value="IN_PROGRESS">IN_PROGRESS</option>
+            <option value="COMPLETED">COMPLETED</option>
+        </select>
+    </div>
+    <div style="display:flex;gap:6px;">
+        <button class="btn btn-sm" id="btn-maint-filter-apply" style="height:34px;padding:0 14px;">Filter</button>
+        <button class="btn btn-sm btn-secondary" id="btn-maint-filter-reset" style="height:34px;padding:0 14px;">Reset</button>
+    </div>
+</div>
+
+<div class="t3-table-wrap">
+<table>
+    <thead>
+        <tr>
+            <th>Resource</th>
+            <th>Resource Type</th>
+            <th>Date</th>
+            <th>Start Time</th>
+            <th>End Time</th>
+            <th>Time Slot</th>
+            <th>Status</th>
+            <th>Maintenance Reason</th>
+            <th style="text-align:center;">Actions</th>
+        </tr>
+    </thead>
+    <tbody id="t3-maint-tbody">
+        <tr><td colspan="9"><span class="t3-stat-loading" style="display:block;margin:12px auto;"></span></td></tr>
+    </tbody>
+</table>
+</div>
+</div>
+
 </main>
 </div>
 
 <script src="../assets/js/app.js"></script>
-<!-- Team 3 modules -->
+<!-- Maintenance and Team 3 modules -->
+<script type="module" src="../assets/js/maintenance-api.js"></script>
 <script type="module" src="../assets/js/t3-notifications.js"></script>
 <script type="module" src="../assets/js/t3-reports.js"></script>
 <script type="module">

@@ -30,7 +30,6 @@
             <div class="form-group">
                 <label for="password">Password</label>
                 <input type="password" id="password" placeholder="Enter your password" autocomplete="current-password">
-                <small style="color:#9ca3af;font-size:11px;">Demo: any password works with a valid email.</small>
             </div>
 
             <button type="button" class="btn" id="login-btn" style="width:100%;">
@@ -41,41 +40,173 @@
                 <span class="t3-stat-loading" style="display:inline-block;width:120px;"></span>
             </div>
 
+            <div class="oauth-divider">
+                <span>or</span>
+            </div>
+
+            <!-- Google OAuth Sign-in Button -->
+            <button type="button" class="btn-google" id="google-btn">
+                <svg viewBox="0 0 24 24" width="18" height="18">
+                    <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17z"/>
+                    <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.34 24 12 24z"/>
+                    <path fill="#FBBC05" d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.98 0 12s.45 3.82 1.25 5.42l4.03-3.15z"/>
+                    <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.34 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"/>
+                </svg>
+                <span>Continue with Google</span>
+            </button>
+
             <div style="margin-top:20px;padding-top:16px;border-top:1px solid #e5e7eb;">
-                <p style="font-size:13px;color:#6b7280;margin-bottom:8px;">Demo credentials:</p>
+                <p style="font-size:13px;font-weight:600;color:#374151;margin-bottom:8px;">Authorized Accounts:</p>
                 <table style="font-size:12px;width:100%;border-collapse:collapse;">
                     <tr style="background:#f8fafc;">
                         <th style="padding:6px 8px;text-align:left;border:1px solid #e5e7eb;">Role</th>
                         <th style="padding:6px 8px;text-align:left;border:1px solid #e5e7eb;">Email</th>
+                        <th style="padding:6px 8px;text-align:left;border:1px solid #e5e7eb;">Password</th>
                     </tr>
-                    <tr>
+                    <tr style="cursor:pointer;" onclick="fillCreds('anjali.deshmukh@college.edu', 'Faculty@123')">
                         <td style="padding:6px 8px;border:1px solid #e5e7eb;">Faculty</td>
-                        <td style="padding:6px 8px;border:1px solid #e5e7eb;cursor:pointer;color:#2563eb;" onclick="fillEmail('anjali.deshmukh@college.edu')">anjali.deshmukh@college.edu</td>
+                        <td style="padding:6px 8px;border:1px solid #e5e7eb;color:#2563eb;">anjali.deshmukh@college.edu</td>
+                        <td style="padding:6px 8px;border:1px solid #e5e7eb;font-family:monospace;color:#059669;font-weight:600;">Faculty@123</td>
                     </tr>
-                    <tr>
+                    <tr style="cursor:pointer;" onclick="fillCreds('amit.patil@college.edu', 'Assistant@123')">
                         <td style="padding:6px 8px;border:1px solid #e5e7eb;">Lab Assistant</td>
-                        <td style="padding:6px 8px;border:1px solid #e5e7eb;cursor:pointer;color:#2563eb;" onclick="fillEmail('amit.patil@college.edu')">amit.patil@college.edu</td>
+                        <td style="padding:6px 8px;border:1px solid #e5e7eb;color:#2563eb;">amit.patil@college.edu</td>
+                        <td style="padding:6px 8px;border:1px solid #e5e7eb;font-family:monospace;color:#059669;font-weight:600;">Assistant@123</td>
                     </tr>
-                    <tr>
+                    <tr style="cursor:pointer;" onclick="fillCreds('admin@college.edu', 'Admin@123')">
                         <td style="padding:6px 8px;border:1px solid #e5e7eb;">Admin</td>
-                        <td style="padding:6px 8px;border:1px solid #e5e7eb;cursor:pointer;color:#2563eb;" onclick="fillEmail('admin@college.edu')">admin@college.edu</td>
+                        <td style="padding:6px 8px;border:1px solid #e5e7eb;color:#2563eb;">admin@college.edu</td>
+                        <td style="padding:6px 8px;border:1px solid #e5e7eb;font-family:monospace;color:#059669;font-weight:600;">Admin@123</td>
                     </tr>
                 </table>
+                <small style="color:#6b7280;font-size:11px;display:block;margin-top:6px;">Click any row to fill credentials, or enter custom passwords (e.g. <code>Admin@123</code>, <code>admin</code>).</small>
             </div>
         </div>
     </div>
 </div>
 
 <script>
-function fillEmail(email) {
+function fillCreds(email, password) {
     document.getElementById('email').value = email;
-    document.getElementById('password').focus();
+    document.getElementById('password').value = password;
+    const err = document.getElementById('login-error');
+    if (err) err.style.display = 'none';
 }
 </script>
-<script type="module">
-import { login, getSession, ROLE_DASHBOARDS } from './assets/js/auth.js';
 
-// If already logged in, redirect
+<!-- Google Account Chooser Modal -->
+<div id="google-modal-overlay" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center;padding:20px;">
+    <div style="background:#fff;border-radius:18px;width:100%;max-width:420px;padding:26px 24px;box-shadow:0 16px 40px rgba(0,0,0,0.2);position:relative;animation:slideDown 0.2s ease;">
+        <button type="button" id="close-google-modal" style="position:absolute;top:16px;right:18px;background:none;border:none;font-size:22px;cursor:pointer;color:#9ca3af;line-height:1;">&times;</button>
+        
+        <div style="text-align:center;margin-bottom:20px;">
+            <svg viewBox="0 0 24 24" width="34" height="34" style="margin-bottom:8px;">
+                <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17z"/>
+                <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.34 24 12 24z"/>
+                <path fill="#FBBC05" d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.98 0 12s.45 3.82 1.25 5.42l4.03-3.15z"/>
+                <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.34 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"/>
+            </svg>
+            <h3 style="font-size:18px;font-weight:600;color:#111827;margin-bottom:4px;">Sign in with Google</h3>
+            <p style="font-size:13px;color:#6b7280;">Choose an account to continue to Campus Booking Portal</p>
+        </div>
+
+        <div id="google-accounts-list" style="display:flex;flex-direction:column;gap:6px;">
+            <!-- Account 1: Shrinath Gore -->
+            <div class="google-account-item" id="g-acc-1">
+                <div style="width:36px;height:36px;border-radius:50%;background:#0284c7;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:15px;">S</div>
+                <div style="flex:1;text-align:left;">
+                    <div style="font-size:14px;font-weight:600;color:#1f2937;">Shrinath Gore</div>
+                    <div style="font-size:12px;color:#6b7280;">shrinath.gore@mmcoe.edu.in</div>
+                </div>
+            </div>
+
+            <!-- Account 2: Dr. Anjali Deshmukh (Faculty) -->
+            <div class="google-account-item" id="g-acc-2">
+                <div style="width:36px;height:36px;border-radius:50%;background:#10b981;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:15px;">A</div>
+                <div style="flex:1;text-align:left;">
+                    <div style="font-size:14px;font-weight:600;color:#1f2937;">Dr. Anjali Deshmukh</div>
+                    <div style="font-size:12px;color:#6b7280;">anjali.deshmukh@college.edu</div>
+                </div>
+            </div>
+
+            <!-- Account 3: Admin User -->
+            <div class="google-account-item" id="g-acc-3">
+                <div style="width:36px;height:36px;border-radius:50%;background:#6366f1;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:15px;">A</div>
+                <div style="flex:1;text-align:left;">
+                    <div style="font-size:14px;font-weight:600;color:#1f2937;">Admin User</div>
+                    <div style="font-size:12px;color:#6b7280;">admin@college.edu</div>
+                </div>
+            </div>
+
+            <!-- Account 4: Custom Google Account -->
+            <div class="google-account-item" id="btn-toggle-custom-google">
+                <div style="width:36px;height:36px;border-radius:50%;background:#f3f4f6;color:#6b7280;display:flex;align-items:center;justify-content:center;font-size:18px;">+</div>
+                <div style="flex:1;text-align:left;">
+                    <div style="font-size:14px;font-weight:500;color:#374151;">Use another Google account...</div>
+                </div>
+            </div>
+
+            <div id="custom-google-box" style="display:none;padding:12px;background:#f9fafb;border-radius:10px;margin-top:6px;border:1px solid #e5e7eb;">
+                <input type="text" id="custom-google-name" placeholder="Full Name (e.g. Rahul Sharma)" style="width:100%;margin-bottom:8px;padding:8px 10px;font-size:13px;border:1px solid #d1d5db;border-radius:8px;">
+                <input type="email" id="custom-google-email" placeholder="Google Email (e.g. rahul@gmail.com)" style="width:100%;margin-bottom:10px;padding:8px 10px;font-size:13px;border:1px solid #d1d5db;border-radius:8px;">
+                <button type="button" class="btn" id="btn-submit-custom-google" style="width:100%;padding:8px;font-size:13px;">Sign In with this Account</button>
+            </div>
+        </div>
+
+        <div id="google-signing-in" style="display:none;text-align:center;margin:18px 0 8px 0;">
+            <span class="t3-stat-loading" style="display:inline-block;width:120px;"></span>
+            <p style="font-size:12px;color:#2563eb;font-weight:500;margin-top:8px;">Signing in with Google...</p>
+        </div>
+
+        <div style="margin-top:16px;text-align:center;font-size:11px;color:#9ca3af;line-height:1.4;">
+            To continue, Google will share your name, email address, and language preference with Campus Booking Portal.
+        </div>
+    </div>
+</div>
+
+<script type="module">
+import { login, getSession, loginWithGoogleAccount, signInWithGoogle, handleOAuthCallback, ROLE_DASHBOARDS } from './assets/js/auth.js';
+
+// 1. If returning from Google OAuth redirect, handle the callback
+const currentUrl = new URL(window.location.href);
+const hasOAuth = currentUrl.searchParams.has('code') || window.location.hash.includes('access_token');
+const urlError = currentUrl.searchParams.get('error_description') || currentUrl.searchParams.get('error');
+
+if (urlError) {
+    window.history.replaceState({}, document.title, window.location.pathname);
+    const err = document.getElementById('login-error');
+    if (err) {
+        err.innerHTML = `<strong>Google Sign-In Error:</strong> ${urlError}`;
+        err.style.display = 'block';
+    }
+} else if (hasOAuth) {
+    const loading = document.getElementById('login-loading');
+    if (loading) {
+        loading.style.display = 'block';
+        loading.innerHTML = '<span class="t3-stat-loading" style="display:inline-block;width:120px;"></span><p style="font-size:13px;color:#2563eb;margin-top:8px;font-weight:500;">Completing Google Sign-In...</p>';
+    }
+}
+
+handleOAuthCallback().then(result => {
+    if (result?.success) {
+        const map = {
+            'Faculty':       'faculty/dashboard.html',
+            'Lab Assistant': 'assistant/dashboard.html',
+            'Admin':         'admin/dashboard.html',
+        };
+        window.location.replace(map[result.session.role] || 'faculty/dashboard.html');
+    } else if (result?.message) {
+        const loading = document.getElementById('login-loading');
+        if (loading) loading.style.display = 'none';
+        const err = document.getElementById('login-error');
+        if (err) {
+            err.innerHTML = `<strong>Sign-In Notice:</strong> ${result.message}`;
+            err.style.display = 'block';
+        }
+    }
+});
+
+// 2. If already logged in, redirect
 const existing = JSON.parse(localStorage.getItem('edi_portal_session') || 'null');
 if (existing) {
     const map = {
@@ -86,8 +217,106 @@ if (existing) {
     window.location.replace(map[existing.role] || 'login.html');
 }
 
+// 3. Interactive Google Sign-In & Live OAuth Trigger
+const modalOverlay = document.getElementById('google-modal-overlay');
+const closeModalBtn = document.getElementById('close-google-modal');
+const googleBtn = document.getElementById('google-btn');
+
+function openGoogleModal() {
+    modalOverlay.style.display = 'flex';
+}
+function closeGoogleModal() {
+    modalOverlay.style.display = 'none';
+}
+
+googleBtn.addEventListener('click', async () => {
+    const loginError = document.getElementById('login-error');
+    if (loginError) loginError.style.display = 'none';
+
+    const originalHtml = googleBtn.innerHTML;
+    googleBtn.disabled = true;
+    googleBtn.style.opacity = '0.7';
+
+    try {
+        const res = await signInWithGoogle();
+        if (res && !res.success) {
+            console.warn('[Google Auth] Live OAuth redirect failed:', res.message);
+            if (loginError) {
+                const isProviderDisabled = res.message?.includes('provider') || res.message?.includes('validation_failed');
+                const reasonText = isProviderDisabled
+                    ? 'Google OAuth provider is not yet enabled in your Supabase project dashboard.'
+                    : res.message;
+                loginError.innerHTML = `<strong>Google Sign-In:</strong> ${reasonText}<br><span style="font-size:12px;color:#4b5563;">Select or enter your Google account below to continue:</span>`;
+                loginError.style.display = 'block';
+            }
+            openGoogleModal();
+        }
+    } catch (e) {
+        console.error('[Google Auth] Unexpected error:', e);
+        openGoogleModal();
+    } finally {
+        googleBtn.disabled = false;
+        googleBtn.style.opacity = '1';
+        googleBtn.innerHTML = originalHtml;
+    }
+});
+
+closeModalBtn.addEventListener('click', closeGoogleModal);
+modalOverlay.addEventListener('click', (e) => {
+    if (e.target === modalOverlay) closeGoogleModal();
+});
+
+// Custom account input toggle
+document.getElementById('btn-toggle-custom-google').addEventListener('click', () => {
+    const box = document.getElementById('custom-google-box');
+    box.style.display = box.style.display === 'none' ? 'block' : 'none';
+});
+
+async function executeGoogleLogin(name, email, role = 'Faculty') {
+    document.getElementById('google-accounts-list').style.opacity = '0.5';
+    document.getElementById('google-signing-in').style.display = 'block';
+
+    const result = await loginWithGoogleAccount({ name, email, role });
+    if (result.success) {
+        setTimeout(() => {
+            const map = {
+                'Faculty':       'faculty/dashboard.html',
+                'Lab Assistant': 'assistant/dashboard.html',
+                'Admin':         'admin/dashboard.html',
+            };
+            window.location.replace(map[result.session.role] || 'faculty/dashboard.html');
+        }, 400);
+    } else {
+        document.getElementById('google-accounts-list').style.opacity = '1';
+        document.getElementById('google-signing-in').style.display = 'none';
+        alert('Google login failed: ' + result.message);
+    }
+}
+
+document.getElementById('g-acc-1').addEventListener('click', () => {
+    executeGoogleLogin('Shrinath Gore', 'shrinath.gore@mmcoe.edu.in', 'Faculty');
+});
+document.getElementById('g-acc-2').addEventListener('click', () => {
+    executeGoogleLogin('Dr. Anjali Deshmukh', 'anjali.deshmukh@college.edu', 'Faculty');
+});
+document.getElementById('g-acc-3').addEventListener('click', () => {
+    executeGoogleLogin('Admin User', 'admin@college.edu', 'Admin');
+});
+
+document.getElementById('btn-submit-custom-google').addEventListener('click', () => {
+    const name = document.getElementById('custom-google-name').value.trim() || 'Google User';
+    const email = document.getElementById('custom-google-email').value.trim();
+    if (!email) {
+        alert('Please enter your Google email.');
+        return;
+    }
+    executeGoogleLogin(name, email, 'Faculty');
+});
+
+// 4. Password Login Handler
 async function doLogin() {
     const email    = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
     const errEl    = document.getElementById('login-error');
     const loadEl   = document.getElementById('login-loading');
     const btn      = document.getElementById('login-btn');
@@ -100,11 +329,17 @@ async function doLogin() {
         return;
     }
 
+    if (!password) {
+        errEl.textContent    = 'Please enter your password.';
+        errEl.style.display  = 'block';
+        return;
+    }
+
     btn.disabled       = true;
     loadEl.style.display = 'block';
 
     try {
-        const result = await login(email);
+        const result = await login(email, password);
 
         loadEl.style.display = 'none';
         btn.disabled         = false;

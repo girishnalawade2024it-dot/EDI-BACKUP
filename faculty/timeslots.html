@@ -108,6 +108,7 @@
 </div>
 
 <script src="../assets/js/app.js"></script>
+<script type="module" src="../assets/js/maintenance-api.js"></script>
 <script type="module" src="../assets/js/t3-notifications.js"></script>
 <script type="module">
 import { supabase } from '../assets/js/supabase-client.js';
@@ -217,7 +218,17 @@ async function loadSlotsForCurrentSelection() {
         .gte('start_at', dayStart)
         .lte('end_at', dayEnd);
 
+    // Fetch maintenance periods for this resource on this day
+    const { data: maintenances } = await supabase
+        .from('resource_unavailability')
+        .select('*')
+        .eq('resource_id', resourceId)
+        .neq('status', 'CANCELLED')
+        .lt('start_at', dayEnd)
+        .gt('end_at', dayStart);
+
     const activeBookings = bookings || [];
+    const activeMaintenances = maintenances || [];
     const baseSlots = generateTimeSlots();
 
     const now = new Date();
@@ -229,7 +240,14 @@ async function loadSlotsForCurrentSelection() {
         // Check if slot is in the past
         const isPast = slotStart <= now;
 
-        // Check overlap: booking.start < slotEnd AND booking.end > slotStart
+        // Check maintenance overlap: maint.start < slotEnd AND maint.end > slotStart
+        const maint = activeMaintenances.find(m => {
+            const mStart = new Date(m.start_at);
+            const mEnd   = new Date(m.end_at);
+            return mStart < slotEnd && mEnd > slotStart;
+        });
+
+        // Check booking overlap: booking.start < slotEnd AND booking.end > slotStart
         const overlap = activeBookings.find(b => {
             const bStart = new Date(b.start_at);
             const bEnd   = new Date(b.end_at);
@@ -245,6 +263,11 @@ async function loadSlotsForCurrentSelection() {
             statusText = 'Past Time';
             badgeClass = 't3-badge-default';
             isBookable = false;
+        } else if (maint) {
+            statusText = 'MAINTENANCE / UNAVAILABLE';
+            badgeClass = 't3-badge-maintenance';
+            isBookable = false;
+            conflictInfo = `(Maintenance: ${maint.reason || 'Under Maintenance'})`;
         } else if (overlap) {
             if (overlap.status === 'APPROVED') {
                 statusText = 'Booked';

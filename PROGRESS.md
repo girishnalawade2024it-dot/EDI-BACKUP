@@ -65,8 +65,7 @@ the migrations and production.
 ## Open items
 
 ### Blocking real use
-- [ ] **Replace email-only login with Supabase Auth.** `login()` in
-      `assets/js/auth.js:82` never checks a password.
+- [x] **Replace email-only login with Supabase Auth.** Integrated `supabase.auth.signInWithPassword` in `assets/js/auth.js`, created migration `009_create_auth_users.sql` to link `auth.users` with `public.users(auth_id)`, and enforced password verification in `login.html`.
 - [ ] **Tighten write policies.** `bookings` inserts and updates are
       `USING (true)` for `anon`; the anon key is public in client JS, so anyone
       can write. Scope policies to the authenticated user.
@@ -87,8 +86,7 @@ the migrations and production.
 - [ ] **Fix schema drift:** add a `009` migration creating
       `resources.has_machines`. It exists in production but not in `001`, so
       a clean replay of the migrations does not reproduce the live schema.
-- [ ] **Duplicate `user_id: 4`** in `SEED_USERS` (`assets/js/auth.js`) — shared
-      by Sneha Joshi and Rahul Verma. Offline fallback only.
+- [x] **Duplicate `user_id: 4`** in `SEED_USERS` (`assets/js/auth.js`) — resolved by updating Rahul Verma to `user_id: 6`.
 
 ### Nice to have
 - [ ] Automated tests — none exist

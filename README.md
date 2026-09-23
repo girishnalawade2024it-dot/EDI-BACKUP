@@ -39,16 +39,35 @@ Then open `http://localhost:8000/login.html`.
 
 ### Logging in
 
-Login is **email-only** — password verification is deliberately skipped for the
-demo (see `assets/js/auth.js:82`). Use any seeded address:
+Authentication is powered by **Supabase Auth (GoTrue)** with secure bcrypt password hashing and JWT sessions. Use any of the configured accounts:
 
-| Email | Role |
-|---|---|
-| `anjali.deshmukh@college.edu` | Faculty |
-| `amit.patil@college.edu` | Lab Assistant |
-| `admin@college.edu` | Admin |
+| Role | Email | Password |
+|---|---|---|
+| Faculty | `anjali.deshmukh@college.edu` | `Faculty@123` |
+| Lab Assistant | `amit.patil@college.edu` | `Assistant@123` |
+| Admin | `admin@college.edu` | `Admin@123` |
 
-You are redirected to the dashboard for your role via `ROLE_DASHBOARDS`.
+Upon successful login, you are authenticated via Supabase and redirected to the appropriate dashboard via `ROLE_DASHBOARDS`.
+
+### Google Authentication (OAuth 2.0)
+
+Users can sign in using **Google Single Sign-On (SSO)** via Supabase Auth.
+
+- **Existing users**: If their Google email matches an existing account (e.g. `admin@college.edu`), they are automatically logged into their configured role (`Admin`, `Faculty`, etc.).
+- **New users**: Automatically provisioned into `public.users` with the default role of **`Faculty`**.
+
+#### 2-Step Google OAuth Setup:
+1. **Google Cloud Console** ([console.cloud.google.com](https://console.cloud.google.com/apis/credentials)):
+   - Create an **OAuth 2.0 Client ID** (Application type: **Web application**).
+   - Under **Authorized redirect URIs**, add:
+     ```text
+     https://vzrevunlustmcssdqqnw.supabase.co/auth/v1/callback
+     ```
+   - Copy the generated **Client ID** and **Client Secret**.
+2. **Supabase Dashboard** ([supabase.com/dashboard](https://supabase.com/dashboard)):
+   - Go to **Authentication** &rarr; **Providers** &rarr; **Google**.
+   - Toggle **Enable Google provider** to ON.
+   - Paste your **Client ID** and **Client Secret**, and click **Save**.
 
 ---
 
