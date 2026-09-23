@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Priority Booking</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+</head>
+
+<body>
+
+<div class="container">
+
+    <aside class="sidebar">
+
+        <div class="logo">Lab Booking Portal</div>
+
+        <nav class="nav">
+            <a href="dashboard.html">Dashboard</a>
+            <a href="resources.html">Book Resource</a>
+            <a href="prioritybooking.html" class="active">Priority Booking</a>
+            <a href="history.html">Booking History</a>
+            <a href="profile.html">Profile</a>
+            <a href="../login.html">Logout</a>
+        </nav>
+
+    </aside>
+
+
+    <main class="main">
+
+        <div class="topbar">
+            <h2>Priority Booking</h2>
+        </div>
+
+
+        <div class="card">
+
+            <form id="priorityBookingForm">
+
+                <!-- Resource -->
+                <div class="form-group">
+                    <label>Resource</label>
+
+                    <select required>
+                        <option>Computer Lab A-101</option>
+                        <option>Electronics Lab B-203</option>
+                        <option>Classroom C-305</option>
+                    </select>
+                </div>
+
+
+                <!-- Date and Time -->
+                <div class="grid-2">
+
+                    <div class="form-group">
+                        <label>Date</label>
+
+                        <input
+                            type="date"
+                            required
+                        >
+                    </div>
+
+
+                    <div class="form-group">
+                        <label>Time Slot</label>
+
+                        <select required>
+
+                            <option>08:00 AM - 09:00 AM</option>
+
+                            <option>09:15 AM - 10:15 AM</option>
+
+                            <option>10:30 AM - 11:30 AM</option>
+
+                            <option>11:45 AM - 12:45 PM</option>
+
+                            <option>02:00 PM - 03:00 PM</option>
+
+                        </select>
+
+                    </div>
+
+                </div>
+
+
+                <!-- Reason -->
+                <div class="form-group">
+
+                    <label>Reason for Priority</label>
+
+                    <textarea
+                        placeholder="Enter reason for priority booking"
+                        required
+                    ></textarea>
+
+                </div>
+
+
+                <!-- Buttons -->
+                <button type="submit" class="btn">
+                    Submit Priority Request
+                </button>
+
+                <a
+                    href="dashboard.html"
+                    class="btn btn-secondary"
+                    style="margin-left:10px;"
+                >
+                    Cancel
+                </a>
+
+            </form>
+
+        </div>
+
+    </main>
+
+</div>
+
+
+<script src="../assets/js/app.js"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+
+    const priorityBookingForm =
+        document.getElementById('priorityBookingForm');
+
+    if (priorityBookingForm) {
+
+        priorityBookingForm.addEventListener('submit', function(e) {
+
+            e.preventDefault();
+
+            alert('Priority booking request submitted successfully!');
+
+        });
+
+    }
+
+});
+</script>
+
+</body>
+</html>

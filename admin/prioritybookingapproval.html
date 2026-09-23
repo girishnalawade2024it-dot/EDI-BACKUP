@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Priority Bookings</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+</head>
+
+<body>
+
+<div class="container">
+
+    <!-- Admin Sidebar -->
+    <aside class="sidebar">
+
+        <div class="logo">🛠️ Admin Panel</div>
+
+        <nav class="nav">
+            <a href="dashboard.html">Dashboard</a>
+            <a href="users.html">Users</a>
+            <a href="labs.html">Laboratories</a>
+            <a href="classrooms.html">Classrooms</a>
+            <a href="resources.html">Resources</a>
+            <a href="prioritybookingapproval.html" class="active">Priority Bookings</a>
+            <a href="conflicts.html">Conflicts</a>
+            <a href="reports.html">Reports</a>
+            <a href="profile.html">Profile</a>
+            <a href="../login.html">Logout</a>
+        </nav>
+
+    </aside>
+
+
+    <!-- Main Content -->
+    <main class="main">
+
+        <div class="topbar">
+            <h2>Priority Bookings</h2>
+            <div>Administrator</div>
+        </div>
+
+
+        <div class="card">
+
+            <h3>Priority Booking Requests</h3>
+
+            <p>
+                Review priority booking requests submitted by faculty members.
+            </p>
+
+        </div>
+
+
+        <!-- Request 1 -->
+        <div class="card">
+
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+
+                <div>
+                    <h3>Dr. Smith</h3>
+
+                    <p style="margin-top:6px;">
+                        Computer Lab A-101
+                    </p>
+
+                    <p style="margin-top:6px;">
+                        22 September 2026 &nbsp; | &nbsp; 08:00 AM - 09:00 AM
+                    </p>
+                </div>
+
+                <span style="
+                    background:#fff3cd;
+                    color:#856404;
+                    padding:6px 12px;
+                    border-radius:20px;
+                    font-size:13px;
+                    font-weight:600;
+                ">
+                    Pending
+                </span>
+
+            </div>
+
+
+            <button
+                class="btn btn-secondary"
+                style="margin-top:15px;"
+                onclick="showDetails('request1')"
+            >
+                View Details
+            </button>
+
+
+            <div id="request1" style="display:none; margin-top:20px;">
+
+                <hr style="margin-bottom:20px;">
+
+                <p><strong>Faculty:</strong> Dr. Smith</p>
+
+                <p style="margin-top:10px;">
+                    <strong>Resource:</strong> Computer Lab A-101
+                </p>
+
+                <p style="margin-top:10px;">
+                    <strong>Date:</strong> 22 September 2026
+                </p>
+
+                <p style="margin-top:10px;">
+                    <strong>Time:</strong> 08:00 AM - 09:00 AM
+                </p>
+
+                <p style="margin-top:10px;">
+                    <strong>Reason:</strong>
+                    Urgent departmental practical session.
+                </p>
+
+                <div style="margin-top:20px;">
+
+                    <button
+                        class="btn"
+                        onclick="approveRequest('Dr. Smith')"
+                    >
+                        Approve
+                    </button>
+
+                    <button
+                        class="btn btn-secondary"
+                        style="margin-left:10px;"
+                        onclick="rejectRequest('Dr. Smith')"
+                    >
+                        Reject
+                    </button>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- Request 2 -->
+        <div class="card">
+
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+
+                <div>
+                    <h3>Prof. Rahul Kulkarni</h3>
+
+                    <p style="margin-top:6px;">
+                        Electronics Lab B-203
+                    </p>
+
+                    <p style="margin-top:6px;">
+                        23 September 2026 &nbsp; | &nbsp; 09:15 AM - 10:15 AM
+                    </p>
+                </div>
+
+                <span style="
+                    background:#fff3cd;
+                    color:#856404;
+                    padding:6px 12px;
+                    border-radius:20px;
+                    font-size:13px;
+                    font-weight:600;
+                ">
+                    Pending
+                </span>
+
+            </div>
+
+
+            <button
+                class="btn btn-secondary"
+                style="margin-top:15px;"
+                onclick="showDetails('request2')"
+            >
+                View Details
+            </button>
+
+
+            <div id="request2" style="display:none; margin-top:20px;">
+
+                <hr style="margin-bottom:20px;">
+
+                <p><strong>Faculty:</strong> Prof. Rahul Kulkarni</p>
+
+                <p style="margin-top:10px;">
+                    <strong>Resource:</strong> Electronics Lab B-203
+                </p>
+
+                <p style="margin-top:10px;">
+                    <strong>Date:</strong> 23 September 2026
+                </p>
+
+                <p style="margin-top:10px;">
+                    <strong>Time:</strong> 09:15 AM - 10:15 AM
+                </p>
+
+                <p style="margin-top:10px;">
+                    <strong>Reason:</strong>
+                    Special equipment required for academic demonstration.
+                </p>
+
+                <div style="margin-top:20px;">
+
+                    <button
+                        class="btn"
+                        onclick="approveRequest('Prof. Rahul Kulkarni')"
+                    >
+                        Approve
+                    </button>
+
+                    <button
+                        class="btn btn-secondary"
+                        style="margin-left:10px;"
+                        onclick="rejectRequest('Prof. Rahul Kulkarni')"
+                    >
+                        Reject
+                    </button>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- Request 3 -->
+        <div class="card">
+
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+
+                <div>
+                    <h3>Dr. Anjali Deshmukh</h3>
+
+                    <p style="margin-top:6px;">
+                        Classroom C-305
+                    </p>
+
+                    <p style="margin-top:6px;">
+                        24 September 2026 &nbsp; | &nbsp; 11:45 AM - 12:45 PM
+                    </p>
+                </div>
+
+                <span style="
+                    background:#fff3cd;
+                    color:#856404;
+                    padding:6px 12px;
+                    border-radius:20px;
+                    font-size:13px;
+                    font-weight:600;
+                ">
+                    Pending
+                </span>
+
+            </div>
+
+
+            <button
+                class="btn btn-secondary"
+                style="margin-top:15px;"
+                onclick="showDetails('request3')"
+            >
+                View Details
+            </button>
+
+
+            <div id="request3" style="display:none; margin-top:20px;">
+
+                <hr style="margin-bottom:20px;">
+
+                <p><strong>Faculty:</strong> Dr. Anjali Deshmukh</p>
+
+                <p style="margin-top:10px;">
+                    <strong>Resource:</strong> Classroom C-305
+                </p>
+
+                <p style="margin-top:10px;">
+                    <strong>Date:</strong> 24 September 2026
+                </p>
+
+                <p style="margin-top:10px;">
+                    <strong>Time:</strong> 11:45 AM - 12:45 PM
+                </p>
+
+                <p style="margin-top:10px;">
+                    <strong>Reason:</strong>
+                    Required for an important departmental presentation.
+                </p>
+
+                <div style="margin-top:20px;">
+
+                    <button
+                        class="btn"
+                        onclick="approveRequest('Dr. Anjali Deshmukh')"
+                    >
+                        Approve
+                    </button>
+
+                    <button
+                        class="btn btn-secondary"
+                        style="margin-left:10px;"
+                        onclick="rejectRequest('Dr. Anjali Deshmukh')"
+                    >
+                        Reject
+                    </button>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- Request 4 -->
+        <div class="card">
+
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+
+                <div>
+                    <h3>Prof. Meera Joshi</h3>
+
+                    <p style="margin-top:6px;">
+                        Computer Lab A-101
+                    </p>
+
+                    <p style="margin-top:6px;">
+                        25 September 2026 &nbsp; | &nbsp; 02:00 PM - 03:00 PM
+                    </p>
+                </div>
+
+                <span style="
+                    background:#fff3cd;
+                    color:#856404;
+                    padding:6px 12px;
+                    border-radius:20px;
+                    font-size:13px;
+                    font-weight:600;
+                ">
+                    Pending
+                </span>
+
+            </div>
+
+
+            <button
+                class="btn btn-secondary"
+                style="margin-top:15px;"
+                onclick="showDetails('request4')"
+            >
+                View Details
+            </button>
+
+
+            <div id="request4" style="display:none; margin-top:20px;">
+
+                <hr style="margin-bottom:20px;">
+
+                <p><strong>Faculty:</strong> Prof. Meera Joshi</p>
+
+                <p style="margin-top:10px;">
+                    <strong>Resource:</strong> Computer Lab A-101
+                </p>
+
+                <p style="margin-top:10px;">
+                    <strong>Date:</strong> 25 September 2026
+                </p>
+
+                <p style="margin-top:10px;">
+                    <strong>Time:</strong> 02:00 PM - 03:00 PM
+                </p>
+
+                <p style="margin-top:10px;">
+                    <strong>Reason:</strong>
+                    Urgent student project evaluation session.
+                </p>
+
+                <div style="margin-top:20px;">
+
+                    <button
+                        class="btn"
+                        onclick="approveRequest('Prof. Meera Joshi')"
+                    >
+                        Approve
+                    </button>
+
+                    <button
+                        class="btn btn-secondary"
+                        style="margin-left:10px;"
+                        onclick="rejectRequest('Prof. Meera Joshi')"
+                    >
+                        Reject
+                    </button>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- Request 5 -->
+        <div class="card">
+
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+
+                <div>
+                    <h3>Dr. Neha Patil</h3>
+
+                    <p style="margin-top:6px;">
+                        Electronics Lab B-203
+                    </p>
+
+                    <p style="margin-top:6px;">
+                        26 September 2026 &nbsp; | &nbsp; 10:30 AM - 11:30 AM
+                    </p>
+                </div>
+
+                <span style="
+                    background:#fff3cd;
+                    color:#856404;
+                    padding:6px 12px;
+                    border-radius:20px;
+                    font-size:13px;
+                    font-weight:600;
+                ">
+                    Pending
+                </span>
+
+            </div>
+
+
+            <button
+                class="btn btn-secondary"
+                style="margin-top:15px;"
+                onclick="showDetails('request5')"
+            >
+                View Details
+            </button>
+
+
+            <div id="request5" style="display:none; margin-top:20px;">
+
+                <hr style="margin-bottom:20px;">
+
+                <p><strong>Faculty:</strong> Dr. Neha Patil</p>
+
+                <p style="margin-top:10px;">
+                    <strong>Resource:</strong> Electronics Lab B-203
+                </p>
+
+                <p style="margin-top:10px;">
+                    <strong>Date:</strong> 26 September 2026
+                </p>
+
+                <p style="margin-top:10px;">
+                    <strong>Time:</strong> 10:30 AM - 11:30 AM
+                </p>
+
+                <p style="margin-top:10px;">
+                    <strong>Reason:</strong>
+                    Required for a scheduled research demonstration.
+                </p>
+
+                <div style="margin-top:20px;">
+
+                    <button
+                        class="btn"
+                        onclick="approveRequest('Dr. Neha Patil')"
+                    >
+                        Approve
+                    </button>
+
+                    <button
+                        class="btn btn-secondary"
+                        style="margin-left:10px;"
+                        onclick="rejectRequest('Dr. Neha Patil')"
+                    >
+                        Reject
+                    </button>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </main>
+
+</div>
+
+
+<script>
+
+function showDetails(requestId) {
+
+    const request = document.getElementById(requestId);
+
+    if (request.style.display === "none") {
+        request.style.display = "block";
+    } else {
+        request.style.display = "none";
+    }
+
+}
+
+
+function approveRequest(facultyName) {
+
+    const confirmed = confirm(
+        "Approve the priority booking request from " + facultyName + "?"
+    );
+
+    if (confirmed) {
+
+        alert(
+            "Priority booking request from " +
+            facultyName +
+            " has been approved."
+        );
+
+    }
+
+}
+
+
+function rejectRequest(facultyName) {
+
+    const confirmed = confirm(
+        "Reject the priority booking request from " + facultyName + "?"
+    );
+
+    if (confirmed) {
+
+        alert(
+            "Priority booking request from " +
+            facultyName +
+            " has been rejected."
+        );
+
+    }
+
+}
+
+</script>
+
+</body>
+</html>
