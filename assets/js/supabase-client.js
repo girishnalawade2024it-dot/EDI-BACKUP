@@ -7,8 +7,8 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-export const SUPABASE_URL      = 'https://vzrevunlustmcssdqqnw.supabase.co';
-export const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ6cmV2dW5sdXN0bWNzc2RxcW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgzNzU2NjYsImV4cCI6MjEwMzk1MTY2Nn0.7-1w7U3tJFLiGZUKWOXma433Lu61EQRkhD7MMdP4PpY';
+export const SUPABASE_URL      = 'YOUR_https://vzrevunlustmcssdqqnw.supabase.co';
+export const SUPABASE_ANON_KEY = 'YOUR_eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ6cmV2dW5sdXN0bWNzc2RxcW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgzNzU2NjYsImV4cCI6MjEwMzk1MTY2Nn0.7-1w7U3tJFLiGZUKWOXma433Lu61EQRkhD7MMdP4PpY';
 
 export const isConfigured = Boolean(
     SUPABASE_URL &&
@@ -144,13 +144,48 @@ const SEED_DATA = {
         { notification_id: 2, user_id: 3, booking_id: 2, type: 'BOOKING_PENDING', title: 'Maintenance Pending', message: 'Your maintenance booking request is pending admin approval.', is_read: false, read_at: null, created_at: new Date(Date.now() - 72000000).toISOString() },
         { notification_id: 3, user_id: 2, booking_id: 3, type: 'BOOKING_DENIED', title: 'Booking Denied', message: 'Your booking request was denied: slot already taken.', is_read: false, read_at: null, created_at: new Date(Date.now() - 50000000).toISOString() },
         { notification_id: 4, user_id: 5, booking_id: 2, type: 'BOOKING_PENDING', title: 'New Pending Approval', message: 'A maintenance booking requires your administrative review.', is_read: false, read_at: null, created_at: new Date().toISOString() }
-    ]
+    ],
+    concerns: []
 };
+
+// Inject 30 days of recurring bookings for AC 301 (09:00 - 11:00)
+let nextBookingId = 100;
+for (let i = -5; i < 30; i++) {
+    const d = new Date();
+    d.setDate(d.getDate() + i);
+    const p = n => String(n).padStart(2, '0');
+    const dateStr = `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+    
+    SEED_DATA.bookings.push({
+        booking_id: nextBookingId++,
+        resource_id: 9, // AC 301
+        requested_by: 5, // Admin User
+        booking_type: 'ACADEMIC',
+        start_at: `${dateStr}T09:00:00`,
+        end_at: `${dateStr}T11:00:00`,
+        purpose: 'Daily Scheduled Class (Recurring)',
+        headcount: 60,
+        status: 'APPROVED',
+        approved_by: 5,
+        decision_reason: null,
+        decision_note: 'Standing reservation',
+        decided_at: new Date().toISOString(),
+        cancelled_at: null,
+        created_at: new Date().toISOString()
+    });
+}
 
 // ── Local Database Storage Engine ─────────────────────────────
 class LocalDB {
     static get(table) {
         const key = 'edi_db_' + table;
+        
+        // Force refresh bookings to pick up the new AC 301 recurring seeds
+        if (table === 'bookings' && !localStorage.getItem('edi_ac301_seeded_v2')) {
+            localStorage.removeItem(key);
+            localStorage.setItem('edi_ac301_seeded_v2', 'true');
+        }
+        
         const stored = localStorage.getItem(key);
         if (stored) {
             try { return JSON.parse(stored); } catch { /* ignore */ }
@@ -166,7 +201,7 @@ class LocalDB {
 }
 
 // Ensure database tables exist in localStorage
-['roles', 'users', 'resources', 'bookings', 'audit_logs', 'notifications'].forEach(t => LocalDB.get(t));
+['roles', 'users', 'resources', 'bookings', 'audit_logs', 'notifications', 'concerns'].forEach(t => LocalDB.get(t));
 
 // ── Query Builder that mirrors Supabase PostgREST Client ─────
 class MockQueryBuilder {
@@ -276,7 +311,8 @@ class MockQueryBuilder {
                 resources: 'resource_id',
                 bookings: 'booking_id',
                 audit_logs: 'audit_id',
-                notifications: 'notification_id'
+                notifications: 'notification_id',
+                concerns: 'concern_id'
             }[this.tableName] || 'id';
 
             let maxId = items.reduce((m, r) => Math.max(m, r[pkField] || 0), 0);

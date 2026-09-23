@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Concerns — Faculty Portal</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+<link rel="stylesheet" href="../assets/css/t3-styles.css">
+</head>
+<body>
+<div class="container">
+    <aside class="sidebar">
+        <div class="logo">🎓 Faculty Portal</div>
+        <nav class="nav">
+            <a href="dashboard.html">Dashboard</a>
+            <a href="resources.html">Book Resource</a>
+            <a href="history.html">Booking History</a>
+            <a href="concerns.html" class="active">My Concerns</a>
+            <a href="profile.html">Profile</a>
+            <a href="../login.html">Logout</a>
+        </nav>
+    </aside>
+
+    <main class="main">
+        <div class="topbar">
+            <h2>My Concerns</h2>
+            <div id="topbar-user">Faculty Member</div>
+        </div>
+
+        <div class="card">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+                <h3 style="margin:0;">Submitted Concerns</h3>
+                <button type="button" class="btn" onclick="loadConcerns()" style="padding:6px 12px; font-size:13px;">↻ Refresh</button>
+            </div>
+            
+            <div style="overflow-x:auto;">
+                <table style="width:100%; border-collapse:collapse; text-align:left; font-size:14px;">
+                    <thead>
+                        <tr style="border-bottom:2px solid #e5e7eb; color:#4b5563;">
+                            <th style="padding:12px 8px;">Concern ID</th>
+                            <th style="padding:12px 8px;">Resource</th>
+                            <th style="padding:12px 8px;">Date</th>
+                            <th style="padding:12px 8px;">Requested Time</th>
+                            <th style="padding:12px 8px;">Type</th>
+                            <th style="padding:12px 8px;">Status</th>
+                            <th style="padding:12px 8px;">Created At</th>
+                            <th style="padding:12px 8px; text-align:right;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="concerns-tbody">
+                        <tr><td colspan="8" style="padding:16px; text-align:center; color:#6b7280;">Loading concerns...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- View Concern Modal -->
+        <div id="view-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; justify-content:center; align-items:center;">
+            <div style="background:#fff; padding:24px; border-radius:8px; width:100%; max-width:600px; box-shadow:0 4px 6px rgba(0,0,0,0.1);">
+                <h3 style="margin-top:0; border-bottom:1px solid #e5e7eb; padding-bottom:12px;">Concern Details</h3>
+                <div style="margin-top:16px; font-size:14px;">
+                    <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+                        <span style="color:#6b7280; font-weight:600;">Concern ID:</span>
+                        <strong id="view-id"></strong>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+                        <span style="color:#6b7280; font-weight:600;">Status:</span>
+                        <strong id="view-status"></strong>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+                        <span style="color:#6b7280; font-weight:600;">Resource:</span>
+                        <span id="view-resource"></span>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+                        <span style="color:#6b7280; font-weight:600;">Requested:</span>
+                        <span id="view-datetime"></span>
+                    </div>
+                    <div style="margin-top:16px;">
+                        <span style="color:#6b7280; font-weight:600; display:block; margin-bottom:4px;">Your Description:</span>
+                        <div id="view-desc" style="background:#f9fafb; padding:12px; border:1px solid #e5e7eb; border-radius:4px; white-space:pre-wrap;"></div>
+                    </div>
+                    <div style="margin-top:16px;">
+                        <span style="color:#6b7280; font-weight:600; display:block; margin-bottom:4px;">Admin Response:</span>
+                        <div id="view-response" style="background:#f0fdf4; padding:12px; border:1px solid #bbf7d0; border-radius:4px; color:#166534; white-space:pre-wrap;"></div>
+                    </div>
+                </div>
+                <div style="display:flex; justify-content:flex-end; margin-top:24px;">
+                    <button type="button" id="btn-close-view" class="btn btn-secondary">Close</button>
+                </div>
+            </div>
+        </div>
+
+    </main>
+</div>
+
+<script src="../assets/js/app.js"></script>
+<script type="module" src="../assets/js/t3-notifications.js"></script>
+<script type="module">
+import { requireAuth, populateTopbar } from '../assets/js/auth.js';
+import { getConcernsForUser } from '../assets/js/concern-engine.js';
+import { fmtDate, fmtDateTime } from '../assets/js/config.js';
+
+const session = requireAuth('Faculty');
+let allConcerns = [];
+
+if (session) {
+    populateTopbar();
+    window.loadConcerns = loadConcerns;
+    loadConcerns();
+}
+
+async function loadConcerns() {
+    const tbody = document.getElementById('concerns-tbody');
+    tbody.innerHTML = '<tr><td colspan="8" style="padding:16px; text-align:center; color:#6b7280;">Loading concerns...</td></tr>';
+    
+    allConcerns = await getConcernsForUser(session.userId);
+    
+    if (allConcerns.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" style="padding:16px; text-align:center; color:#6b7280;">You have not raised any concerns.</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = '';
+    allConcerns.forEach(c => {
+        const tr = document.createElement('tr');
+        tr.style.borderBottom = '1px solid #e5e7eb';
+        
+        let statusBadge = '';
+        if (c.status === 'OPEN') statusBadge = '<span style="background:#dbeafe; color:#1e40af; padding:2px 8px; border-radius:9999px; font-size:12px; font-weight:600;">OPEN</span>';
+        else if (c.status === 'UNDER_REVIEW') statusBadge = '<span style="background:#fef3c7; color:#92400e; padding:2px 8px; border-radius:9999px; font-size:12px; font-weight:600;">UNDER REVIEW</span>';
+        else if (c.status === 'RESOLVED') statusBadge = '<span style="background:#dcfce7; color:#166534; padding:2px 8px; border-radius:9999px; font-size:12px; font-weight:600;">RESOLVED</span>';
+        else if (c.status === 'REJECTED') statusBadge = '<span style="background:#fee2e2; color:#b91c1c; padding:2px 8px; border-radius:9999px; font-size:12px; font-weight:600;">REJECTED</span>';
+
+        const reqTime = `${c.requested_start_time.substring(0,5)} – ${c.requested_end_time.substring(0,5)}`;
+        
+        tr.innerHTML = `
+            <td style="padding:12px 8px;">CON-${c.concern_id.toString().padStart(6, '0')}</td>
+            <td style="padding:12px 8px;">${c.resources?.room_code || 'N/A'}</td>
+            <td style="padding:12px 8px;">${fmtDate(c.requested_date)}</td>
+            <td style="padding:12px 8px;">${reqTime}</td>
+            <td style="padding:12px 8px;">${c.concern_type}</td>
+            <td style="padding:12px 8px;">${statusBadge}</td>
+            <td style="padding:12px 8px;">${fmtDateTime(c.created_at)}</td>
+            <td style="padding:12px 8px; text-align:right;">
+                <button class="btn btn-sm btn-secondary view-btn" data-id="${c.concern_id}" style="padding:4px 8px; font-size:12px;">View</button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+    
+    document.querySelectorAll('.view-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const id = parseInt(e.target.dataset.id, 10);
+            openViewModal(id);
+        });
+    });
+}
+
+function openViewModal(concernId) {
+    const c = allConcerns.find(x => x.concern_id === concernId);
+    if (!c) return;
+    
+    document.getElementById('view-id').textContent = `CON-${c.concern_id.toString().padStart(6, '0')}`;
+    document.getElementById('view-status').textContent = c.status;
+    document.getElementById('view-resource').textContent = c.resources?.room_code || 'N/A';
+    document.getElementById('view-datetime').textContent = `${fmtDate(c.requested_date)} | ${c.requested_start_time.substring(0,5)} – ${c.requested_end_time.substring(0,5)}`;
+    document.getElementById('view-desc').textContent = c.description;
+    
+    const responseBox = document.getElementById('view-response');
+    if (c.admin_response) {
+        responseBox.textContent = c.admin_response;
+        responseBox.style.display = 'block';
+    } else {
+        responseBox.textContent = 'No response yet.';
+        responseBox.style.display = 'block';
+        responseBox.style.background = '#f3f4f6';
+        responseBox.style.borderColor = '#e5e7eb';
+        responseBox.style.color = '#6b7280';
+    }
+    
+    document.getElementById('view-modal').style.display = 'flex';
+}
+
+document.getElementById('btn-close-view').addEventListener('click', () => {
+    document.getElementById('view-modal').style.display = 'none';
+});
+</script>
+</body>
+</html>

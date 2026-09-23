@@ -44,6 +44,14 @@ export const CONFIG = {
         COMPLETED: 'COMPLETED',
     },
 
+    // Concern status values
+    CONCERN_STATUS: {
+        OPEN:         'OPEN',
+        UNDER_REVIEW: 'UNDER_REVIEW',
+        RESOLVED:     'RESOLVED',
+        REJECTED:     'REJECTED',
+    },
+
     // Audit event types (SRS FR-8.2)
     AUDIT: {
         BOOKING_CREATED:    'BOOKING_CREATED',
@@ -55,6 +63,11 @@ export const CONFIG = {
         RESOURCE_UPDATED:   'RESOURCE_UPDATED',
         USER_ROLE_CHANGED:  'USER_ROLE_CHANGED',
         PERMISSION_DENIED:  'PERMISSION_DENIED',
+        CONCERN_CREATED:    'CONCERN_CREATED',
+        CONCERN_STATUS_CHANGED: 'CONCERN_STATUS_CHANGED',
+        CONCERN_RESPONSE_ADDED: 'CONCERN_RESPONSE_ADDED',
+        CONCERN_RESOLVED:   'CONCERN_RESOLVED',
+        CONCERN_REJECTED:   'CONCERN_REJECTED',
     },
 };
 

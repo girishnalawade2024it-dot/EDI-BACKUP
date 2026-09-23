@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Concern Management — Admin Portal</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+<link rel="stylesheet" href="../assets/css/t3-styles.css">
+</head>
+<body>
+<div class="container">
+    <aside class="sidebar">
+        <div class="logo">⚙️ Admin Portal</div>
+        <nav class="nav">
+            <a href="dashboard.html">Dashboard</a>
+            <a href="resources.html">Resources</a>
+            <a href="labs.html">↳ Labs</a>
+            <a href="classrooms.html">↳ Classrooms</a>
+            <a href="users.html">Users</a>
+            <a href="conflicts.html">Conflicts</a>
+            <a href="reports.html">Reports</a>
+            <a href="concerns.html" class="active">Concern Management</a>
+            <a href="profile.html">Profile</a>
+            <a href="../login.html">Logout</a>
+        </nav>
+    </aside>
+
+    <main class="main">
+        <div class="topbar">
+            <h2>Concern Management</h2>
+            <div id="topbar-user">Administrator</div>
+        </div>
+
+        <div class="card">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+                <h3 style="margin:0;">Submitted Concerns</h3>
+                <div style="display:flex; gap:12px;">
+                    <select id="filter-status" class="form-control" style="padding:6px; font-size:13px;" onchange="renderTable()">
+                        <option value="ALL">All Statuses</option>
+                        <option value="OPEN">Open</option>
+                        <option value="UNDER_REVIEW">Under Review</option>
+                        <option value="RESOLVED">Resolved</option>
+                        <option value="REJECTED">Rejected</option>
+                    </select>
+                    <button type="button" class="btn" onclick="loadConcerns()" style="padding:6px 12px; font-size:13px;">↻ Refresh</button>
+                </div>
+            </div>
+            
+            <div id="feedback-alert" style="display:none;margin-bottom:16px;padding:14px;border-radius:8px;font-size:14px;"></div>
+
+            <div style="overflow-x:auto;">
+                <table style="width:100%; border-collapse:collapse; text-align:left; font-size:14px;">
+                    <thead>
+                        <tr style="border-bottom:2px solid #e5e7eb; color:#4b5563;">
+                            <th style="padding:12px 8px;">ID</th>
+                            <th style="padding:12px 8px;">Faculty</th>
+                            <th style="padding:12px 8px;">Resource</th>
+                            <th style="padding:12px 8px;">Date</th>
+                            <th style="padding:12px 8px;">Time</th>
+                            <th style="padding:12px 8px;">Status</th>
+                            <th style="padding:12px 8px;">Created At</th>
+                            <th style="padding:12px 8px; text-align:right;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="concerns-tbody">
+                        <tr><td colspan="8" style="padding:16px; text-align:center; color:#6b7280;">Loading concerns...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Admin View/Respond Modal -->
+        <div id="manage-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; justify-content:center; align-items:center;">
+            <div style="background:#fff; padding:24px; border-radius:8px; width:100%; max-width:600px; box-shadow:0 4px 6px rgba(0,0,0,0.1); max-height: 90vh; overflow-y: auto;">
+                <h3 style="margin-top:0; border-bottom:1px solid #e5e7eb; padding-bottom:12px;">Manage Concern</h3>
+                <form id="manage-form">
+                    <input type="hidden" id="manage-id">
+                    <div style="margin-top:16px; font-size:14px;">
+                        <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+                            <span style="color:#6b7280; font-weight:600;">Concern ID:</span>
+                            <strong id="manage-id-display"></strong>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+                            <span style="color:#6b7280; font-weight:600;">Faculty:</span>
+                            <strong id="manage-faculty"></strong>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+                            <span style="color:#6b7280; font-weight:600;">Resource:</span>
+                            <span id="manage-resource"></span>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+                            <span style="color:#6b7280; font-weight:600;">Requested:</span>
+                            <span id="manage-datetime"></span>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+                            <span style="color:#6b7280; font-weight:600;">Type:</span>
+                            <span id="manage-type"></span>
+                        </div>
+                        <div style="margin-top:16px;">
+                            <span style="color:#6b7280; font-weight:600; display:block; margin-bottom:4px;">Faculty Description:</span>
+                            <div id="manage-desc" style="background:#f9fafb; padding:12px; border:1px solid #e5e7eb; border-radius:4px; white-space:pre-wrap;"></div>
+                        </div>
+                    </div>
+
+                    <div style="margin-top:20px;">
+                        <label style="font-weight:600; display:block; margin-bottom:4px;">Update Status *</label>
+                        <select id="manage-status" required class="form-control" style="width:100%; padding:8px;">
+                            <option value="OPEN">OPEN</option>
+                            <option value="UNDER_REVIEW">UNDER_REVIEW</option>
+                            <option value="RESOLVED">RESOLVED</option>
+                            <option value="REJECTED">REJECTED</option>
+                        </select>
+                    </div>
+
+                    <div style="margin-top:16px;">
+                        <label style="font-weight:600; display:block; margin-bottom:4px;">Admin Response</label>
+                        <textarea id="manage-response" rows="4" placeholder="Provide a response or resolution note to the faculty..." style="width:100%;padding:8px;border:1px solid #d1d5db;border-radius:4px; font-family:inherit; box-sizing:border-box;"></textarea>
+                    </div>
+
+                    <div style="display:flex; justify-content:flex-end; gap:12px; margin-top:24px;">
+                        <button type="button" id="btn-close-manage" class="btn btn-secondary">Cancel</button>
+                        <button type="submit" id="btn-save-manage" class="btn">Save Response</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+    </main>
+</div>
+
+<script src="../assets/js/app.js"></script>
+<script type="module" src="../assets/js/t3-notifications.js"></script>
+<script type="module">
+import { requireAuth, populateTopbar } from '../assets/js/auth.js';
+import { getAllConcerns, updateConcernStatus } from '../assets/js/concern-engine.js';
+import { fmtDate, fmtDateTime } from '../assets/js/config.js';
+
+const session = requireAuth('Admin');
+let allConcerns = [];
+
+if (session) {
+    populateTopbar();
+    window.loadConcerns = loadConcerns;
+    window.renderTable = renderTable;
+    loadConcerns();
+}
+
+async function loadConcerns() {
+    const tbody = document.getElementById('concerns-tbody');
+    tbody.innerHTML = '<tr><td colspan="8" style="padding:16px; text-align:center; color:#6b7280;">Loading concerns...</td></tr>';
+    
+    allConcerns = await getAllConcerns();
+    renderTable();
+}
+
+function renderTable() {
+    const tbody = document.getElementById('concerns-tbody');
+    const filter = document.getElementById('filter-status').value;
+    
+    const filtered = filter === 'ALL' ? allConcerns : allConcerns.filter(c => c.status === filter);
+    
+    if (filtered.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" style="padding:16px; text-align:center; color:#6b7280;">No concerns found.</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = '';
+    filtered.forEach(c => {
+        const tr = document.createElement('tr');
+        tr.style.borderBottom = '1px solid #e5e7eb';
+        
+        let statusBadge = '';
+        if (c.status === 'OPEN') statusBadge = '<span style="background:#dbeafe; color:#1e40af; padding:2px 8px; border-radius:9999px; font-size:12px; font-weight:600;">OPEN</span>';
+        else if (c.status === 'UNDER_REVIEW') statusBadge = '<span style="background:#fef3c7; color:#92400e; padding:2px 8px; border-radius:9999px; font-size:12px; font-weight:600;">UNDER REVIEW</span>';
+        else if (c.status === 'RESOLVED') statusBadge = '<span style="background:#dcfce7; color:#166534; padding:2px 8px; border-radius:9999px; font-size:12px; font-weight:600;">RESOLVED</span>';
+        else if (c.status === 'REJECTED') statusBadge = '<span style="background:#fee2e2; color:#b91c1c; padding:2px 8px; border-radius:9999px; font-size:12px; font-weight:600;">REJECTED</span>';
+
+        const reqTime = `${c.requested_start_time.substring(0,5)} – ${c.requested_end_time.substring(0,5)}`;
+        
+        tr.innerHTML = `
+            <td style="padding:12px 8px;">CON-${c.concern_id.toString().padStart(6, '0')}</td>
+            <td style="padding:12px 8px;">${c.users?.name || 'N/A'}</td>
+            <td style="padding:12px 8px;">${c.resources?.room_code || 'N/A'}</td>
+            <td style="padding:12px 8px;">${fmtDate(c.requested_date)}</td>
+            <td style="padding:12px 8px;">${reqTime}</td>
+            <td style="padding:12px 8px;">${statusBadge}</td>
+            <td style="padding:12px 8px;">${fmtDateTime(c.created_at)}</td>
+            <td style="padding:12px 8px; text-align:right;">
+                <button class="btn btn-sm btn-secondary manage-btn" data-id="${c.concern_id}" style="padding:4px 8px; font-size:12px;">Manage</button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+    
+    document.querySelectorAll('.manage-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const id = parseInt(e.target.dataset.id, 10);
+            openManageModal(id);
+        });
+    });
+}
+
+function openManageModal(concernId) {
+    const c = allConcerns.find(x => x.concern_id === concernId);
+    if (!c) return;
+    
+    document.getElementById('manage-id').value = c.concern_id;
+    document.getElementById('manage-id-display').textContent = `CON-${c.concern_id.toString().padStart(6, '0')}`;
+    document.getElementById('manage-faculty').textContent = c.users?.name || 'Unknown';
+    document.getElementById('manage-resource').textContent = c.resources?.room_code || 'N/A';
+    document.getElementById('manage-datetime').textContent = `${fmtDate(c.requested_date)} | ${c.requested_start_time.substring(0,5)} – ${c.requested_end_time.substring(0,5)}`;
+    document.getElementById('manage-type').textContent = c.concern_type;
+    document.getElementById('manage-desc').textContent = c.description;
+    
+    document.getElementById('manage-status').value = c.status;
+    document.getElementById('manage-response').value = c.admin_response || '';
+    
+    document.getElementById('manage-modal').style.display = 'flex';
+}
+
+document.getElementById('btn-close-manage').addEventListener('click', () => {
+    document.getElementById('manage-modal').style.display = 'none';
+});
+
+document.getElementById('manage-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('btn-save-manage');
+    btn.disabled = true;
+    btn.textContent = 'Saving...';
+    
+    const id = parseInt(document.getElementById('manage-id').value, 10);
+    const newStatus = document.getElementById('manage-status').value;
+    const responseText = document.getElementById('manage-response').value.trim();
+    
+    const result = await updateConcernStatus(id, session.userId, newStatus, responseText);
+    
+    btn.disabled = false;
+    btn.textContent = 'Save Response';
+    
+    if (result.success) {
+        document.getElementById('manage-modal').style.display = 'none';
+        const alertEl = document.getElementById('feedback-alert');
+        alertEl.style.display = 'block';
+        alertEl.style.background = '#dcfce7';
+        alertEl.style.border = '1px solid #86efac';
+        alertEl.style.color = '#166534';
+        alertEl.innerHTML = `✓ <strong>Success</strong><br>Concern CON-${id.toString().padStart(6, '0')} has been updated to ${newStatus}.`;
+        
+        loadConcerns(); // Reload to get fresh data
+    } else {
+        alert('Error saving concern: ' + result.message);
+    }
+});
+</script>
+</body>
+</html>

@@ -15,6 +15,7 @@
             <a href="dashboard.html">Dashboard</a>
             <a href="resources.html" class="active">Book Resource</a>
             <a href="history.html">Booking History</a>
+            <a href="concerns.html">My Concerns</a>
             <a href="profile.html">Profile</a>
             <a href="../login.html">Logout</a>
         </nav>
@@ -37,6 +38,12 @@
             <div id="alternatives-section" style="display:none;">
                 <h4 style="color:#1e3a8a;margin:12px 0 8px 0;">💡 Suggested Alternative Resources (Same Time Window):</h4>
                 <div id="alternatives-list" style="display:flex;gap:12px;flex-wrap:wrap;"></div>
+            </div>
+            
+            <hr style="border:0; border-top:1px solid #fca5a5; margin: 16px 0;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <span style="color:#991b1b; font-size:14px; font-weight:600;">Think there is an issue with this booking?</span>
+                <button type="button" id="btn-open-concern" class="btn btn-secondary" style="border-color:#ef4444; color:#b91c1c; padding:8px 16px;">Raise Concern</button>
             </div>
         </div>
 
@@ -95,6 +102,44 @@
                 </div>
             </form>
         </div>
+
+        <!-- Raise Concern Modal -->
+        <div id="concern-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; justify-content:center; align-items:center;">
+            <div style="background:#fff; padding:24px; border-radius:8px; width:100%; max-width:500px; box-shadow:0 4px 6px rgba(0,0,0,0.1);">
+                <h3 style="margin-top:0;">Raise a Concern</h3>
+                <form id="concern-form">
+                    <div class="form-group">
+                        <label style="font-weight:600; display:block; margin-bottom:4px;">Resource</label>
+                        <input type="text" id="concern-resource-name" readonly style="width:100%;padding:8px;background:#f3f4f6;border:1px solid #d1d5db;border-radius:4px; box-sizing:border-box;">
+                        <input type="hidden" id="concern-resource-id">
+                    </div>
+                    <div class="grid-2">
+                        <div class="form-group">
+                            <label style="font-weight:600; display:block; margin-bottom:4px;">Date</label>
+                            <input type="text" id="concern-date" readonly style="width:100%;padding:8px;background:#f3f4f6;border:1px solid #d1d5db;border-radius:4px; box-sizing:border-box;">
+                        </div>
+                        <div class="form-group">
+                            <label style="font-weight:600; display:block; margin-bottom:4px;">Requested Time</label>
+                            <input type="text" id="concern-time" readonly style="width:100%;padding:8px;background:#f3f4f6;border:1px solid #d1d5db;border-radius:4px; box-sizing:border-box;">
+                            <input type="hidden" id="concern-start">
+                            <input type="hidden" id="concern-end">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label style="font-weight:600; display:block; margin-bottom:4px;">Concern Type</label>
+                        <input type="text" value="Booking Conflict" readonly style="width:100%;padding:8px;background:#f3f4f6;border:1px solid #d1d5db;border-radius:4px; box-sizing:border-box;">
+                    </div>
+                    <div class="form-group">
+                        <label style="font-weight:600; display:block; margin-bottom:4px;">Description *</label>
+                        <textarea id="concern-desc" rows="4" required placeholder="Explain why you believe this conflict needs review..." style="width:100%;padding:8px;border:1px solid #d1d5db;border-radius:4px; font-family:inherit; box-sizing:border-box;"></textarea>
+                    </div>
+                    <div style="display:flex; justify-content:flex-end; gap:12px; margin-top:16px;">
+                        <button type="button" id="btn-close-concern" class="btn btn-secondary" style="padding:8px 16px;">Cancel</button>
+                        <button type="submit" id="btn-submit-concern" class="btn" style="padding:8px 16px;">Submit Concern</button>
+                    </div>
+                </form>
+            </div>
+        </div>
     </main>
 </div>
 
@@ -104,6 +149,7 @@
 import { supabase } from '../assets/js/supabase-client.js';
 import { requireAuth, populateTopbar } from '../assets/js/auth.js';
 import { submitBooking, suggestAlternatives } from '../assets/js/booking-engine.js';
+import { submitConcern } from '../assets/js/concern-engine.js';
 import { CONFIG, todayLocalISO } from '../assets/js/config.js';
 
 const session = requireAuth('Faculty');
@@ -166,6 +212,72 @@ async function initBookingForm() {
     updateCapacityHint();
 
     document.getElementById('booking-form').addEventListener('submit', handleBookingSubmit);
+    initConcernModal();
+}
+
+function initConcernModal() {
+    const concernModal = document.getElementById('concern-modal');
+    const alertEl = document.getElementById('feedback-alert');
+    
+    document.getElementById('btn-open-concern').addEventListener('click', () => {
+        const resId = document.getElementById('book-resource').value;
+        const currentRes = resourcesMap[resId];
+        document.getElementById('concern-resource-id').value = resId;
+        document.getElementById('concern-resource-name').value = currentRes ? `${currentRes.room_code} (${currentRes.block || 'Main'})` : 'Unknown';
+        
+        document.getElementById('concern-date').value = document.getElementById('book-date').value;
+        const start = document.getElementById('book-start').value;
+        const end = document.getElementById('book-end').value;
+        document.getElementById('concern-time').value = `${start} – ${end}`;
+        document.getElementById('concern-start').value = start;
+        document.getElementById('concern-end').value = end;
+        
+        document.getElementById('concern-desc').value = '';
+        concernModal.style.display = 'flex';
+    });
+
+    document.getElementById('btn-close-concern').addEventListener('click', () => {
+        concernModal.style.display = 'none';
+    });
+
+    document.getElementById('concern-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const btn = document.getElementById('btn-submit-concern');
+        btn.disabled = true;
+        btn.textContent = 'Submitting...';
+
+        const resourceId = parseInt(document.getElementById('concern-resource-id').value, 10);
+        const dateStr = document.getElementById('concern-date').value;
+        const start = document.getElementById('concern-start').value;
+        const end = document.getElementById('concern-end').value;
+        const desc = document.getElementById('concern-desc').value.trim();
+
+        const result = await submitConcern({
+            userId: session.userId,
+            resourceId: resourceId,
+            requestedDate: dateStr,
+            requestedStartTime: `${start}:00`,
+            requestedEndTime: `${end}:00`,
+            concernType: 'Booking Conflict',
+            description: desc
+        });
+
+        btn.disabled = false;
+        btn.textContent = 'Submit Concern';
+
+        if (result.success) {
+            concernModal.style.display = 'none';
+            document.getElementById('conflict-card').style.display = 'none';
+            
+            alertEl.style.display = 'block';
+            alertEl.style.background = '#dcfce7';
+            alertEl.style.border = '1px solid #86efac';
+            alertEl.style.color = '#166534';
+            alertEl.innerHTML = `✓ <strong>Concern Raised Successfully</strong><br><br>Your concern has been submitted for review.<br>Concern ID: CON-${result.concernId.toString().padStart(6, '0')}<br><br>You can track its status from "My Concerns".`;
+        } else {
+            alert('Error submitting concern: ' + result.message);
+        }
+    });
 }
 
 async function handleBookingSubmit(e) {
