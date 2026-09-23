@@ -1,4 +1,4 @@
-from rest_framework import viewsets, permissions, status
+from rest_framework import viewsets, permissions, status, mixins
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.utils import timezone
@@ -13,14 +13,14 @@ from .services import BookingServiceError
 # Custom Permissions
 class IsAdminRole(permissions.BasePermission):
     def has_permission(self, request, view):
-        return bool(request.user and request.user.is_authenticated and request.user.role.role_name == 'Admin')
+        return bool(request.user and request.user.is_authenticated and request.user.role.role_name in ['Admin', 'SuperAdmin'])
 
 class ResourceViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Resource.objects.filter(status='ACTIVE')
     serializer_class = ResourceSerializer
     permission_classes = [permissions.IsAuthenticated]
 
-class BookingViewSet(viewsets.ModelViewSet):
+class BookingViewSet(mixins.CreateModelMixin, viewsets.ReadOnlyModelViewSet):
     queryset = Booking.objects.all()
     serializer_class = BookingSerializer
     permission_classes = [permissions.IsAuthenticated]
