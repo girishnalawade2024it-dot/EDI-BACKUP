@@ -31,9 +31,9 @@
 <main class="main">
 
 <div class="topbar">
-<h2>Reports</h2>
+<h2>Executive Reports & Analytics</h2>
 <!-- t3-notifications.js injects bell here -->
-<div>Administrator</div>
+<div id="topbar-user">Administrator</div>
 </div>
 
 <!-- ── Summary Stat Cards (live from t3-reports.js) ── -->
@@ -84,15 +84,21 @@
         <input type="date" id="t3-filter-to">
     </div>
     <div class="t3-filter-group">
-        <label for="t3-filter-type">Resource Type</label>
-        <select id="t3-filter-type">
-            <option value="">All Types</option>
-            <option value="Lab">Lab</option>
-            <option value="Classroom">Classroom</option>
+        <label for="t3-filter-facility">Specific Facility</label>
+        <select id="t3-filter-facility">
+            <option value="">All Facilities (11)</option>
         </select>
     </div>
     <div class="t3-filter-group">
-        <label for="t3-filter-status">Status</label>
+        <label for="t3-filter-type">Resource Type</label>
+        <select id="t3-filter-type">
+            <option value="">All Types</option>
+            <option value="Lab">Laboratories Only</option>
+            <option value="Classroom">Classrooms Only</option>
+        </select>
+    </div>
+    <div class="t3-filter-group">
+        <label for="t3-filter-status">Booking Status</label>
         <select id="t3-filter-status">
             <option value="">All Statuses</option>
             <option value="APPROVED">Approved</option>
@@ -109,8 +115,36 @@
     </div>
 </div>
 
+<!-- ── Report 2: Lab-Wise Utilisation ── -->
+<div class="card" style="margin-bottom:24px;">
+<div class="t3-section-header">
+    <h3>📊 Lab-Wise Resource Utilisation Report</h3>
+    <button class="t3-export-btn" id="t3-export-r2">⬇ Export CSV</button>
+</div>
+<p style="font-size:13px;color:#6b7280;margin-bottom:4px;">
+    Comprehensive booked hours, capacity, and utilisation rates per lab based on approved bookings.
+</p>
+
+<div class="t3-table-wrap">
+<table>
+    <thead>
+        <tr>
+            <th>Facility / Room</th>
+            <th>Type & Block</th>
+            <th>Capacity & Equipment</th>
+            <th>Booked Hours</th>
+            <th>Available / Idle</th>
+        </tr>
+    </thead>
+    <tbody id="t3-r2-tbody">
+        <tr><td colspan="5"><span class="t3-stat-loading" style="display:block;margin:16px auto;"></span></td></tr>
+    </tbody>
+</table>
+</div>
+</div>
+
 <!-- ── Report 1: Booking Count ── -->
-<div class="card">
+<div class="card" style="margin-bottom:24px;">
 <div class="t3-section-header">
     <h3>📋 Booking Count Report</h3>
     <button class="t3-export-btn" id="t3-export-r1">⬇ Export CSV</button>
@@ -123,35 +157,11 @@
             <th>Booking #</th>
             <th>Resource</th>
             <th>Booking Type</th>
+            <th>Date & Time</th>
             <th>Status</th>
         </tr>
     </thead>
     <tbody id="t3-r1-tbody">
-        <tr><td colspan="4"><span class="t3-stat-loading" style="display:block;margin:12px auto;"></span></td></tr>
-    </tbody>
-</table>
-</div>
-</div>
-
-<!-- ── Report 2: Resource Utilisation ── -->
-<div class="card">
-<div class="t3-section-header">
-    <h3>📊 Resource Utilisation Report</h3>
-    <button class="t3-export-btn" id="t3-export-r2">⬇ Export CSV</button>
-</div>
-<p style="font-size:13px;color:#6b7280;margin-bottom:4px;">Booked hours per resource based on approved bookings in the selected date range.</p>
-<div class="t3-table-wrap">
-<table>
-    <thead>
-        <tr>
-            <th>Room</th>
-            <th>Type</th>
-            <th>Block</th>
-            <th style="text-align:center;">Bookings</th>
-            <th>Booked Hours</th>
-        </tr>
-    </thead>
-    <tbody id="t3-r2-tbody">
         <tr><td colspan="5"><span class="t3-stat-loading" style="display:block;margin:12px auto;"></span></td></tr>
     </tbody>
 </table>

@@ -86,7 +86,38 @@ export async function login(email /*, password */) {
 
     const normEmail = email.trim().toLowerCase();
 
-    // 1. Try real Supabase lookup if configured
+    // 1. Try Python FastAPI Backend API if reachable
+    try {
+        const apiBase = window.location.origin.includes('localhost') || window.location.origin.includes('127.0.0.1')
+            ? `${window.location.origin}/api`
+            : 'http://localhost:8000/api';
+        const res = await fetch(`${apiBase}/auth/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: normEmail })
+        });
+        if (res.ok) {
+            const data = await res.json();
+            const session = {
+                userId:       data.user_id,
+                email:        data.email,
+                name:         data.name,
+                role:         data.role,
+                role_id:      data.role_id,
+                can_override: data.can_override,
+                sessionId:    data.session_id,
+            };
+            setSession(session);
+            if (data.session_id) {
+                localStorage.setItem('edi_token', data.session_id);
+            }
+            return { success: true, session };
+        }
+    } catch (e) {
+        console.warn('[Auth] Python backend lookup skipped or failed, trying Supabase/LocalDB:', e);
+    }
+
+    // 2. Try real Supabase lookup if configured
     if (isConfigured) {
         try {
             const { data, error } = await supabase
