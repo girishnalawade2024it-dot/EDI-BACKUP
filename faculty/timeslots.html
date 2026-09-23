@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Time Slots</title>
 <link rel="stylesheet" href="../assets/css/style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 <div class="container">
@@ -24,35 +25,11 @@
             <h2>Available Time Slots</h2>
         </div>
 
-        <div class="card">
-            <div class="slot">
-                <span>08:00 AM - 09:00 AM</span>
-                <span class="status available">Available</span>
-            </div>
-
-            <div class="slot">
-                <span>09:15 AM - 10:15 AM</span>
-                <span class="status available">Available</span>
-            </div>
-
-            <div class="slot">
-                <span>10:30 AM - 11:30 AM</span>
-                <span class="status booked">Booked</span>
-            </div>
-
-            <div class="slot">
-                <span>11:45 AM - 12:45 PM</span>
-                <span class="status available">Available</span>
-            </div>
-
-            <div class="slot">
-                <span>02:00 PM - 03:00 PM</span>
-                <span class="status pending">Pending</span>
-            </div>
-
-            <div style="margin-top:20px;">
-                <a class="btn" href="booking.html">Book Selected Slot</a>
-            </div>
+        <div class="card" id="timeSlotsContainer">
+            <p>Loading slots...</p>
+        </div>
+        <div style="margin-top:20px; text-align: center;">
+            <a class="btn" id="bookBtn" href="booking.html">Book Selected Slot</a>
         </div>
     </main>
 </div>

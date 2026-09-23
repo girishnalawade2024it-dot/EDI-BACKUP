@@ -3,8 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Conflicts</title>
+<title>Priority Approvals</title>
 <link rel="stylesheet" href="../assets/css/style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 
@@ -19,7 +20,7 @@
 <a href="labs.html">Laboratories</a>
 <a href="classrooms.html">Classrooms</a>
 <a href="resources.html">Resources</a>
-<a href="conflicts.html" class="active">Conflicts</a>
+<a href="approvals.html" class="active">Approvals</a>
 <a href="reports.html">Reports</a>
 <a href="profile.html">Profile</a>
 <a href="../login.html">Logout</a>
@@ -29,33 +30,28 @@
 <main class="main">
 
 <div class="topbar">
-<h2>Booking Conflicts</h2>
+<h2>Priority Approvals Queue</h2>
 </div>
 
 <div class="card">
 
 <table>
+<thead>
 <tr>
-<th>Faculty A</th>
-<th>Faculty B</th>
+<th>Priority</th>
+<th>Faculty</th>
+<th>Purpose</th>
 <th>Resource</th>
-<th>Time</th>
+<th>Date & Time</th>
+<th>Capacity</th>
+<th>Equipment</th>
+<th>Requested At</th>
+<th>Actions</th>
 </tr>
-
-<tr>
-<td>Dr. Smith</td>
-<td>Dr. Brown</td>
-<td>Lab 407A</td>
-<td>10:00 - 11:00</td>
-</tr>
-
-<tr>
-<td>Prof. John</td>
-<td>Dr. Patel</td>
-<td>Room 501</td>
-<td>02:00 - 03:00</td>
-</tr>
-
+</thead>
+<tbody id="approvalsTableBody">
+<!-- Populated by JS -->
+</tbody>
 </table>
 
 </div>

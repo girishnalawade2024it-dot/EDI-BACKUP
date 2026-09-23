@@ -44,6 +44,7 @@ CREATE TABLE resources (
     room_code VARCHAR(50) NOT NULL,
     resource_type VARCHAR(50) NOT NULL,
     block VARCHAR(50),
+    has_machines BOOLEAN DEFAULT FALSE,
     capacity INTEGER,
     notes TEXT,
     status VARCHAR(30) NOT NULL,

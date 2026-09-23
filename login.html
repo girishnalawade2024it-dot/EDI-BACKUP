@@ -5,19 +5,40 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Login - Lab Booking Portal</title>
 <link rel="stylesheet" href="assets/css/style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
+<script src="assets/js/app.js"></script>
 <script>
-function loginUser() {
+async function loginUser() {
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
+    
+    if (!email || !password) {
+        alert('Please enter both email and password.');
+        return;
+    }
 
-    const role = document.getElementById('role').value;
+    // Use the secure RPC function to authenticate
+    const { data: userData, error } = await supabaseClient
+        .rpc('authenticate_user', { p_email: email, p_password: password });
 
-    if (role === 'faculty') {
+    if (error || !userData) {
+        alert('Invalid email or password.');
+        return;
+    }
+
+    const user = userData;
+    localStorage.setItem('session_token', user.session_token);
+    localStorage.setItem('user_id', user.user_id);
+    localStorage.setItem('user_name', user.name);
+    localStorage.setItem('role_id', user.role_id);
+    
+    // Role mapping: 1: Faculty, 2: Lab Assistant, 3: Admin
+    if (user.role_id === 1) {
         window.location.href = 'faculty/dashboard.html';
-    }
-    else if (role === 'assistant') {
+    } else if (user.role_id === 2) {
         window.location.href = 'assistant/dashboard.html';
-    }
-    else if (role === 'admin') {
+    } else if (user.role_id === 3) {
         window.location.href = 'admin/dashboard.html';
     }
 }
@@ -37,21 +58,12 @@ function loginUser() {
 
             <div class="form-group">
                 <label>Email</label>
-                <input type="email" placeholder="Enter your email">
+                <input type="email" id="email" placeholder="Enter your email">
             </div>
 
             <div class="form-group">
                 <label>Password</label>
-                <input type="password" placeholder="Enter your password">
-            </div>
-
-            <div class="form-group">
-                <label>Login As</label>
-                <select id="role">
-                    <option value="faculty">Faculty</option>
-                    <option value="assistant">Lab Assistant</option>
-                    <option value="admin">Admin</option>
-                </select>
+                <input type="password" id="password" placeholder="Enter your password">
             </div>
 
             <button type="button" class="btn" style="width:100%;" onclick="loginUser()">

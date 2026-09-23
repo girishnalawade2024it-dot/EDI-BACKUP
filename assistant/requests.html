@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Booking Requests</title>
     <link rel="stylesheet" href="../assets/css/style.css" />
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 
@@ -34,38 +35,19 @@
         <div class="card">
 
             <table>
-                <tr>
-                    <th>Request ID</th>
-                    <th>Faculty</th>
-                    <th>Lab</th>
-                    <th>Time</th>
-                    <th>Status</th>
-                </tr>
-
-                <tr>
-                    <td>REQ101</td>
-                    <td>Dr. Smith</td>
-                    <td>Lab 407A</td>
-                    <td>09:00 - 11:00</td>
-                    <td><span class="status pending">Pending</span></td>
-                </tr>
-
-                <tr>
-                    <td>REQ102</td>
-                    <td>Dr. Brown</td>
-                    <td>Lab 408A</td>
-                    <td>11:00 - 01:00</td>
-                    <td><span class="status pending">Pending</span></td>
-                </tr>
-
-                <tr>
-                    <td>REQ103</td>
-                    <td>Dr. Patel</td>
-                    <td>Lab 409A</td>
-                    <td>02:00 - 04:00</td>
-                    <td><span class="status available">Approved</span></td>
-                </tr>
-
+                <thead>
+                    <tr>
+                        <th>Request ID</th>
+                        <th>Faculty</th>
+                        <th>Resource</th>
+                        <th>Time</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="requestsTableBody">
+                    <!-- Dynamic content will be injected here -->
+                </tbody>
             </table>
 
         </div>

@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Book Resource</title>
 <link rel="stylesheet" href="../assets/css/style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 <div class="container">
@@ -28,32 +29,49 @@
             <form id="bookingForm">
                 <div class="form-group">
                     <label>Resource</label>
-                    <select required>
-                        <option>Computer Lab A-101</option>
-                        <option>Electronics Lab B-203</option>
-                        <option>Classroom C-305</option>
+                    <select id="resourceSelect" required>
+                        <option value="">Loading resources...</option>
                     </select>
                 </div>
 
                 <div class="grid-2">
                     <div class="form-group">
                         <label>Date</label>
-                        <input type="date" required>
+                        <input type="date" id="bookingDate" required>
                     </div>
 
                     <div class="form-group">
                         <label>Time Slot</label>
-                        <select required>
-                            <option>08:00 - 09:00</option>
-                            <option>09:15 - 10:15</option>
-                            <option>11:45 - 12:45</option>
+                        <select id="timeSlotSelect" required>
+                            <option value="08:00 - 09:00">08:00 - 09:00</option>
+                            <option value="09:15 - 10:15">09:15 - 10:15</option>
+                            <option value="10:30 - 11:30">10:30 - 11:30</option>
+                            <option value="11:45 - 12:45">11:45 - 12:45</option>
+                            <option value="13:00 - 14:00">13:00 - 14:00</option>
+                            <option value="14:00 - 15:00">14:00 - 15:00</option>
                         </select>
                     </div>
                 </div>
 
                 <div class="form-group">
                     <label>Purpose</label>
-                    <textarea placeholder="Enter purpose of booking" required></textarea>
+                    <textarea id="purposeInput" placeholder="Enter purpose of booking" required></textarea>
+                </div>
+
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label>Headcount (Optional)</label>
+                        <input type="number" id="headcountInput" placeholder="Estimated number of people" min="1">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Priority Level</label>
+                        <select id="prioritySelect">
+                            <option value="1">Normal (1)</option>
+                            <option value="2">High (2)</option>
+                            <option value="3">Critical (3)</option>
+                        </select>
+                    </div>
                 </div>
 
                 <button type="submit" class="btn">Submit Booking</button>
