@@ -100,6 +100,36 @@
                             <span style="color:#6b7280; font-weight:600; display:block; margin-bottom:4px;">Faculty Description:</span>
                             <div id="manage-desc" style="background:#f9fafb; padding:12px; border:1px solid #e5e7eb; border-radius:4px; white-space:pre-wrap;"></div>
                         </div>
+
+                        <!-- Slot Contention Comparison & Decision Panel -->
+                        <div id="contention-panel" style="display:none;background:#fefce8;border:1px solid #fef08a;border-radius:8px;padding:14px;margin-top:16px;">
+                            <div style="font-weight:700;color:#854d0e;margin-bottom:8px;display:flex;align-items:center;gap:6px;">
+                                <span>⚔️</span> Resource Contention Detected for this Slot
+                            </div>
+                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:13px;">
+                                <div style="background:#fff;border:1px solid #e2e8f0;padding:10px;border-radius:6px;">
+                                    <div style="font-weight:600;color:#1e40af;margin-bottom:4px;">1. Challenger (Concern)</div>
+                                    <div><strong>Faculty:</strong> <span id="challenger-name">—</span></div>
+                                    <div><strong>Email:</strong> <span id="challenger-email">—</span></div>
+                                    <div style="margin-top:4px;"><strong>Reason:</strong> <span id="challenger-reason" style="color:#4b5563;">—</span></div>
+                                </div>
+                                <div style="background:#fff;border:1px solid #e2e8f0;padding:10px;border-radius:6px;">
+                                    <div style="font-weight:600;color:#15803d;margin-bottom:4px;">2. Current Slot Holder</div>
+                                    <div><strong>Faculty:</strong> <span id="holder-name">—</span></div>
+                                    <div><strong>Booking:</strong> <span id="holder-bkid">—</span></div>
+                                    <div><strong>Status:</strong> <span style="background:#dcfce7;color:#166534;font-size:11px;padding:2px 6px;border-radius:9999px;font-weight:600;">APPROVED</span></div>
+                                    <div style="margin-top:4px;"><strong>Purpose:</strong> <span id="holder-purpose" style="color:#4b5563;">—</span></div>
+                                </div>
+                            </div>
+                            <div style="margin-top:12px;display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;">
+                                <button type="button" id="btn-keep-allocation" class="btn btn-secondary" style="font-size:12px;padding:6px 12px;background:#f1f5f9;color:#334155;border:1px solid #cbd5e1;cursor:pointer;">
+                                    🛡️ Keep with Current Faculty
+                                </button>
+                                <button type="button" id="btn-reallocate-slot" class="btn" style="font-size:12px;padding:6px 14px;background:#dc2626;color:#fff;border:none;cursor:pointer;">
+                                    🔄 Reallocate Slot to Challenger
+                                </button>
+                            </div>
+                        </div>
                     </div>
 
                     <div style="margin-top:20px;">
@@ -113,7 +143,7 @@
                     </div>
 
                     <div style="margin-top:16px;">
-                        <label style="font-weight:600; display:block; margin-bottom:4px;">Admin Response</label>
+                        <label style="font-weight:600; display:block; margin-bottom:4px;">Admin Response / Allocation Note</label>
                         <textarea id="manage-response" rows="4" placeholder="Provide a response or resolution note to the faculty..." style="width:100%;padding:8px;border:1px solid #d1d5db;border-radius:4px; font-family:inherit; box-sizing:border-box;"></textarea>
                     </div>
 
@@ -132,11 +162,13 @@
 <script type="module" src="../assets/js/t3-notifications.js"></script>
 <script type="module">
 import { requireAuth, populateTopbar } from '../assets/js/auth.js';
-import { getAllConcerns, updateConcernStatus } from '../assets/js/concern-engine.js';
+import { getAllConcerns, updateConcernStatus, getContendingBookingDetails, decideResourceAllocation } from '../assets/js/concern-engine.js';
 import { fmtDate, fmtDateTime } from '../assets/js/config.js';
 
 const session = requireAuth('Admin');
 let allConcerns = [];
+let currentConcern = null;
+let currentContendingBooking = null;
 
 if (session) {
     populateTopbar();
@@ -200,10 +232,13 @@ function renderTable() {
     });
 }
 
-function openManageModal(concernId) {
+async function openManageModal(concernId) {
     const c = allConcerns.find(x => x.concern_id === concernId);
     if (!c) return;
     
+    currentConcern = c;
+    currentContendingBooking = null;
+
     document.getElementById('manage-id').value = c.concern_id;
     document.getElementById('manage-id-display').textContent = `CON-${c.concern_id.toString().padStart(6, '0')}`;
     document.getElementById('manage-faculty').textContent = c.users?.name || 'Unknown';
@@ -214,12 +249,128 @@ function openManageModal(concernId) {
     
     document.getElementById('manage-status').value = c.status;
     document.getElementById('manage-response').value = c.admin_response || '';
+
+    // Check if there is an active contending booking on that slot
+    const contentionPanel = document.getElementById('contention-panel');
+    if (contentionPanel) contentionPanel.style.display = 'none';
+
+    try {
+        const contending = await getContendingBookingDetails(c.resource_id, c.requested_date, c.requested_start_time, c.requested_end_time);
+        if (contending) {
+            currentContendingBooking = contending;
+            document.getElementById('challenger-name').textContent = c.users?.name || 'Faculty Challenger';
+            document.getElementById('challenger-email').textContent = c.users?.email || '—';
+            document.getElementById('challenger-reason').textContent = c.description || '—';
+
+            document.getElementById('holder-name').textContent = contending.users?.name || 'Current Faculty';
+            document.getElementById('holder-bkid').textContent = `#BK-${contending.booking_id}`;
+            document.getElementById('holder-purpose').textContent = contending.purpose || '—';
+
+            if (contentionPanel) contentionPanel.style.display = 'block';
+        }
+    } catch (_) {}
     
     document.getElementById('manage-modal').style.display = 'flex';
 }
 
 document.getElementById('btn-close-manage').addEventListener('click', () => {
     document.getElementById('manage-modal').style.display = 'none';
+});
+
+// Admin Decision Action 1: Keep Allocated to Current Faculty
+document.getElementById('btn-keep-allocation')?.addEventListener('click', async () => {
+    if (!currentConcern) return;
+    const responseBox = document.getElementById('manage-response');
+    if (!responseBox.value.trim()) {
+        responseBox.value = 'Administrative Decision: After academic priority assessment, the resource allocation is retained with the original faculty holder.';
+    }
+    document.getElementById('manage-status').value = 'REJECTED';
+
+    const reason = responseBox.value.trim();
+    const btn = document.getElementById('btn-keep-allocation');
+    btn.disabled = true;
+    btn.textContent = 'Saving...';
+
+    const res = await decideResourceAllocation({
+        concernId: currentConcern.concern_id,
+        adminUserId: session.userId,
+        decision: 'KEEP_WITH_CURRENT',
+        reason,
+        challengerUserId: currentConcern.user_id,
+        originalBookingId: currentContendingBooking?.booking_id,
+        resourceId: currentConcern.resource_id,
+        dateStr: currentConcern.requested_date,
+        startTime: currentConcern.requested_start_time,
+        endTime: currentConcern.requested_end_time,
+    });
+
+    btn.disabled = false;
+    btn.textContent = '🛡️ Keep with Current Faculty';
+
+    if (res.success) {
+        document.getElementById('manage-modal').style.display = 'none';
+        const alertEl = document.getElementById('feedback-alert');
+        alertEl.style.display = 'block';
+        alertEl.style.background = '#eff6ff';
+        alertEl.style.border = '1px solid #bfdbfe';
+        alertEl.style.color = '#1e40af';
+        alertEl.innerHTML = `✓ <strong>Allocation Decision Recorded</strong><br>${res.message}`;
+        loadConcerns();
+    } else {
+        alert(res.message);
+    }
+});
+
+// Admin Decision Action 2: Reallocate Resource to Challenger
+document.getElementById('btn-reallocate-slot')?.addEventListener('click', async () => {
+    if (!currentConcern) return;
+    const challengerName = currentConcern.users?.name || 'challenger faculty';
+    const roomCode = currentConcern.resources?.room_code || 'this resource';
+
+    const confirmed = confirm(`Are you sure you want to REALLOCATE ${roomCode} to Prof. ${challengerName}?\n\nThe current booking will be released/cancelled, and a new confirmed booking will be allocated to Prof. ${challengerName}. Both faculty members will be notified.`);
+    if (!confirmed) return;
+
+    const responseBox = document.getElementById('manage-response');
+    let reason = responseBox.value.trim();
+    if (!reason) {
+        reason = prompt('Please provide an administrative reason for reallocating this resource:', 'Reallocated based on verified academic priority.');
+        if (!reason) return;
+        responseBox.value = reason;
+    }
+    document.getElementById('manage-status').value = 'RESOLVED';
+
+    const btn = document.getElementById('btn-reallocate-slot');
+    btn.disabled = true;
+    btn.textContent = 'Reallocating...';
+
+    const res = await decideResourceAllocation({
+        concernId: currentConcern.concern_id,
+        adminUserId: session.userId,
+        decision: 'REALLOCATE_TO_CHALLENGER',
+        reason,
+        challengerUserId: currentConcern.user_id,
+        originalBookingId: currentContendingBooking?.booking_id,
+        resourceId: currentConcern.resource_id,
+        dateStr: currentConcern.requested_date,
+        startTime: currentConcern.requested_start_time,
+        endTime: currentConcern.requested_end_time,
+    });
+
+    btn.disabled = false;
+    btn.textContent = '🔄 Reallocate Slot to Challenger';
+
+    if (res.success) {
+        document.getElementById('manage-modal').style.display = 'none';
+        const alertEl = document.getElementById('feedback-alert');
+        alertEl.style.display = 'block';
+        alertEl.style.background = '#dcfce7';
+        alertEl.style.border = '1px solid #86efac';
+        alertEl.style.color = '#166534';
+        alertEl.innerHTML = `✓ <strong>Resource Reallocated Successfully</strong><br>${res.message}`;
+        loadConcerns();
+    } else {
+        alert(res.message);
+    }
 });
 
 document.getElementById('manage-form').addEventListener('submit', async (e) => {

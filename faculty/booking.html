@@ -335,7 +335,27 @@ async function handleBookingSubmit(e) {
 
             if (result.code === 'SLOT_TAKEN') {
                 conflictCard.style.display = 'block';
-                conflictMsg.innerHTML = `<strong>${result.message}</strong><br>Another approved booking occupies this time interval.`;
+                conflictMsg.innerHTML = `
+                    <strong>${result.message}</strong><br>
+                    <span style="color:#6b7280;font-size:13px;">This resource is already occupied by another approved booking during this interval.</span>
+                    <div style="margin-top:12px;">
+                        <button type="button" id="btn-raise-contention" class="btn" style="background:#dc2626;color:#fff;padding:8px 14px;font-size:13px;border:none;border-radius:6px;cursor:pointer;">
+                            ⚠️ Need this exact slot? Raise Contention Concern to Admin →
+                        </button>
+                    </div>
+                `;
+
+                document.getElementById('btn-raise-contention')?.addEventListener('click', () => {
+                    const resObj = resourcesMap[resourceId];
+                    document.getElementById('concern-resource-id').value = resourceId;
+                    document.getElementById('concern-resource-name').value = resObj ? `${resObj.room_code} (${resObj.resource_type})` : `Resource #${resourceId}`;
+                    document.getElementById('concern-date').value = dateStr;
+                    document.getElementById('concern-time').value = `${startTime} – ${endTime}`;
+                    document.getElementById('concern-start').value = startTime;
+                    document.getElementById('concern-end').value = endTime;
+                    document.getElementById('concern-desc').value = `Urgent contention: I require ${resObj?.room_code || 'this resource'} for my academic session on ${dateStr} from ${startTime} to ${endTime}. Please review and decide allocation.`;
+                    document.getElementById('concern-modal').style.display = 'flex';
+                });
 
                 // Search for alternatives
                 const currentRes = resourcesMap[resourceId];

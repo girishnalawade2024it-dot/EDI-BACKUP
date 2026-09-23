@@ -29,8 +29,8 @@
 
         <div class="card" style="text-align:center;padding:40px 24px;max-width:700px;margin:20px auto;">
             <div style="font-size:54px;color:#16a34a;margin-bottom:12px;">✅</div>
-            <h2 style="margin:0 0 8px 0;">Booking Submitted Successfully!</h2>
-            <p style="color:#6b7280;margin:0 0 24px 0;">
+            <h2 id="confirmation-heading" style="margin:0 0 8px 0;">Booking Submitted Successfully!</h2>
+            <p id="confirmation-subtitle" style="color:#6b7280;margin:0 0 24px 0;">
                 Your reservation request has been registered in the system and routed to the administrator for review.
             </p>
 
@@ -89,6 +89,25 @@ async function loadConfirmation() {
     const dateStr = start.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
     const timeStr = `${start.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})} – ${end.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}`;
 
+    const isApproved = booking.status === 'APPROVED';
+
+    const headerTitle = document.getElementById('confirmation-heading');
+    const headerSub = document.getElementById('confirmation-subtitle');
+    if (headerTitle && isApproved) {
+        headerTitle.textContent = '🎉 Booking Confirmed & Allocated Automatically!';
+    }
+    if (headerSub && isApproved) {
+        headerSub.textContent = 'Your reservation is confirmed! The resource was available and has been automatically allocated for your selected time window.';
+    }
+
+    const statusBadgeHtml = isApproved
+        ? '<span class="t3-badge t3-badge-approved" style="background:#dcfce7;color:#15803d;padding:4px 10px;border-radius:9999px;font-weight:600;">APPROVED — Automatically Confirmed</span>'
+        : `<span class="t3-badge t3-badge-pending">${booking.status} — Awaiting Admin Review</span>`;
+
+    const footerNoteHtml = isApproved
+        ? 'ℹ️ Your slot is secured on the campus schedule. If another faculty member raises an urgent contention concern for this exact slot, the administrator will review and resolve it.'
+        : 'ℹ️ You will receive an on-screen bell notification once the administrator reviews and decides on your request.';
+
     box.innerHTML = `
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:14px;">
             <div><strong>Booking Reference:</strong></div>
@@ -112,11 +131,11 @@ async function loadConfirmation() {
             <div><strong>Purpose:</strong></div>
             <div>${booking.purpose}</div>
 
-            <div><strong>Approval Status:</strong></div>
-            <div><span class="t3-badge t3-badge-pending">${booking.status} — Awaiting Admin Approval</span></div>
+            <div><strong>Allocation Status:</strong></div>
+            <div>${statusBadgeHtml}</div>
         </div>
         <div style="margin-top:16px;padding-top:12px;border-top:1px solid #e5e7eb;font-size:12px;color:#6b7280;">
-            ℹ️ You will receive an on-screen bell notification once the administrator reviews and decides on your request.
+            ${footerNoteHtml}
         </div>
     `;
 }
