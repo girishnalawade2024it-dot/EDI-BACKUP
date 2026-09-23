@@ -4,7 +4,8 @@
 // Reads from: bookings, resources, audit_logs, users (SELECT only)
 // ============================================================
 
-import { supabase } from './supabase-client.js';
+import { supabase, LocalDB } from './supabase-client.js';
+import { deleteMaintenance } from './maintenance-api.js';
 
 // ── Master Cache ─────────────────────────────────────────────
 let cachedResources = [];
@@ -49,11 +50,18 @@ function statusBadge(status) {
         APPROVED:  't3-badge-approved',
         PENDING:   't3-badge-pending',
         DENIED:    't3-badge-denied',
-        CANCELLED: 't3-badge-cancelled',
-        PREEMPTED: 't3-badge-preempted',
-        COMPLETED: 't3-badge-completed',
+        CANCELLED:   't3-badge-cancelled',
+        PREEMPTED:   't3-badge-preempted',
+        COMPLETED:   't3-badge-completed',
+        MAINTENANCE: 't3-badge-maintenance',
     }[status] || 't3-badge-default';
     return `<span class="t3-badge ${cls}">${status}</span>`;
+}
+
+function fmtDateDMY(date) {
+    const d = new Date(date);
+    if (isNaN(d.getTime())) return '—';
+    return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
 // ── Get filter values ────────────────────────────────────────
@@ -620,6 +628,354 @@ function exportInsightfulLabCSV() {
     downloadCSVBlob(fullCsv, `executive_lab_utilisation_report_${new Date().toISOString().slice(0, 10)}.csv`);
 }
 
+// ── Report 4: Resource Maintenance & Unavailable Time Slots ──
+let maintenanceReportData = [];
+
+function expandMaintenanceSlots(record) {
+    const start = new Date(record.start_at);
+    const end   = new Date(record.end_at);
+    const slots = [];
+
+    let cur = new Date(start);
+    while (cur < end) {
+        let next = new Date(cur);
+        if (cur.getMinutes() === 0 && (end - cur) >= 60 * 60 * 1000) {
+            next.setHours(cur.getHours() + 1, 0, 0, 0);
+        } else if (cur.getMinutes() !== 0) {
+            next.setHours(cur.getHours() + 1, 0, 0, 0);
+            if (next > end) next = new Date(end);
+        } else {
+            next = new Date(end);
+        }
+
+        const sH = String(cur.getHours()).padStart(2, '0');
+        const sM = String(cur.getMinutes()).padStart(2, '0');
+        const eH = String(next.getHours()).padStart(2, '0');
+        const eM = String(next.getMinutes()).padStart(2, '0');
+
+        const startTimeStr = `${sH}:${sM}`;
+        const endTimeStr   = `${eH}:${eM}`;
+        const slotStr      = `${startTimeStr}-${endTimeStr}`;
+
+        slots.push({
+            maintId: record.id,
+            startTimeStr,
+            endTimeStr,
+            slotStr
+        });
+
+        cur = next;
+    }
+
+    if (slots.length === 0) {
+        const sH = String(start.getHours()).padStart(2, '0');
+        const sM = String(start.getMinutes()).padStart(2, '0');
+        const eH = String(end.getHours()).padStart(2, '0');
+        const eM = String(end.getMinutes()).padStart(2, '0');
+        const startTimeStr = `${sH}:${sM}`;
+        const endTimeStr   = `${eH}:${eM}`;
+        slots.push({
+            maintId: record.id,
+            startTimeStr,
+            endTimeStr,
+            slotStr: `${startTimeStr}-${endTimeStr}`
+        });
+    }
+
+    return slots;
+}
+
+async function loadMaintenanceReport() {
+    const tbody = document.getElementById('t3-maint-tbody');
+    if (!tbody) return;
+    tbody.innerHTML = '<tr><td colspan="9"><span class="t3-stat-loading" style="display:block;margin:12px auto;"></span></td></tr>';
+
+    const filterDate = document.getElementById('maint-filter-date')?.value || null;
+    const filterRes  = document.getElementById('maint-filter-resource')?.value || null;
+    const filterStat = document.getElementById('maint-filter-status')?.value || null;
+
+    try {
+        let q = supabase
+            .from('resource_unavailability')
+            .select(`
+                id,
+                resource_id,
+                start_at,
+                end_at,
+                reason,
+                status,
+                created_by,
+                created_at,
+                resources ( room_code, resource_type, block, notes ),
+                users ( name, email )
+            `)
+            .order('start_at', { ascending: false });
+
+        if (filterDate) {
+            q = q.gte('start_at', `${filterDate}T00:00:00`)
+                 .lte('start_at', `${filterDate}T23:59:59`);
+        }
+        if (filterRes) {
+            q = q.eq('resource_id', parseInt(filterRes, 10));
+        }
+        if (filterStat) {
+            q = q.eq('status', filterStat);
+        }
+
+        const { data, error } = await q.limit(200);
+        if (error) throw error;
+
+        const records = data || [];
+        maintenanceReportData = [];
+
+        // Expand each maintenance period into individual time slots
+        const allSlotRows = [];
+        records.forEach(r => {
+            const slots = expandMaintenanceSlots(r);
+            const start = new Date(r.start_at);
+            const dateStr = fmtDateDMY(start);
+            const roomName = r.resources?.room_code || `Resource #${r.resource_id}`;
+            const resType  = r.resources?.resource_type || 'Laboratory';
+
+            slots.forEach(s => {
+                maintenanceReportData.push({
+                    'Resource':           roomName,
+                    'Resource Type':      resType,
+                    'Date':               dateStr,
+                    'Start Time':         s.startTimeStr,
+                    'End Time':           s.endTimeStr,
+                    'Time Slot':          s.slotStr,
+                    'Status':             r.status || 'MAINTENANCE',
+                    'Maintenance Reason': r.reason || 'Computer Servicing'
+                });
+
+                allSlotRows.push({
+                    maintId:      r.id,
+                    roomName,
+                    resType,
+                    block:        r.resources?.block || '',
+                    dateStr,
+                    startTimeStr: s.startTimeStr,
+                    endTimeStr:   s.endTimeStr,
+                    slotStr:      s.slotStr,
+                    status:       r.status || 'MAINTENANCE',
+                    reason:       r.reason || 'Computer Servicing'
+                });
+            });
+        });
+
+        tbody.innerHTML = '';
+
+        if (allSlotRows.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="9" class="t3-empty" style="text-align:center;padding:24px;color:#6b7280;">No maintenance periods or unavailable time slots match the selected filters.</td></tr>';
+            return;
+        }
+
+        allSlotRows.forEach(row => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>
+                    <strong>${row.roomName}</strong>
+                    ${row.block ? `<div style="font-size:11px;color:#6b7280;">Block ${row.block}</div>` : ''}
+                </td>
+                <td><span style="font-size:12px;font-weight:500;">${row.resType}</span></td>
+                <td style="white-space:nowrap;font-weight:500;">📅 ${row.dateStr}</td>
+                <td style="font-weight:600;white-space:nowrap;">${row.startTimeStr}</td>
+                <td style="font-weight:600;white-space:nowrap;">${row.endTimeStr}</td>
+                <td style="font-weight:600;color:#1e40af;white-space:nowrap;">⏰ ${row.slotStr}</td>
+                <td>${statusBadge(row.status)}</td>
+                <td>
+                    <div style="font-size:13px;font-weight:500;">${row.reason}</div>
+                </td>
+                <td style="text-align:center;">
+                    <button class="btn btn-sm btn-delete-maint" data-id="${row.maintId}" style="background:#dc2626;color:#fff;padding:3px 10px;font-size:12px;border:none;border-radius:4px;cursor:pointer;">Remove</button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+        // Wire delete buttons
+        tbody.querySelectorAll('.btn-delete-maint').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const id = btn.dataset.id;
+                if (!id) return;
+                if (!confirm(`Are you sure you want to remove this maintenance period (#${id})?`)) return;
+
+                btn.disabled = true;
+                btn.textContent = 'Removing...';
+
+                try {
+                    const res = await deleteMaintenance(id);
+                    if (res.success) {
+                        await loadMaintenanceReport();
+                        await loadSummaryStats(getFilters());
+                    } else {
+                        alert(res.message || 'Could not remove maintenance.');
+                        btn.disabled = false;
+                        btn.textContent = 'Remove';
+                    }
+                } catch (err) {
+                    alert('Error removing maintenance: ' + err.message);
+                    btn.disabled = false;
+                    btn.textContent = 'Remove';
+                }
+            });
+        });
+
+    } catch (e) {
+        console.error('[T3 Reports] Maintenance Report error:', e.message);
+        tbody.innerHTML = `<tr><td colspan="9"><div class="t3-error">Error loading maintenance data: ${e.message}</div></td></tr>`;
+    }
+}
+
+async function initMaintenanceResources() {
+    let resources = [];
+    try {
+        const { data, error } = await supabase
+            .from('resources')
+            .select('resource_id, room_code, resource_type, block')
+            .eq('status', 'ACTIVE')
+            .order('room_code');
+
+        if (!error && data && data.length > 0) {
+            resources = data;
+        }
+    } catch (e) {
+        console.warn('[T3 Reports] remote resources fetch failed, using fallback:', e);
+    }
+
+    if (!resources || resources.length === 0) {
+        const local = LocalDB.get('resources') || [];
+        resources = local.filter(r => r.status === 'ACTIVE').sort((a, b) => a.room_code.localeCompare(b.room_code));
+    }
+
+    const inputSelect  = document.getElementById('maint-input-resource');
+    const filterSelect = document.getElementById('maint-filter-resource');
+
+    if (resources && resources.length > 0) {
+        const options = resources.map(r => 
+            `<option value="${r.resource_id}">${r.room_code} (${r.resource_type}${r.block ? ' - Block ' + r.block : ''})</option>`
+        ).join('');
+
+        if (inputSelect) {
+            inputSelect.innerHTML = '<option value="">Select Resource...</option>' + options;
+        }
+        if (filterSelect) {
+            filterSelect.innerHTML = '<option value="">All Resources</option>' + options;
+        }
+    }
+}
+
+function initMaintenanceForm() {
+    const form = document.getElementById('maint-schedule-form');
+    if (!form) return;
+
+    const dateInput = document.getElementById('maint-input-date');
+    if (dateInput && !dateInput.value) {
+        dateInput.value = new Date().toISOString().slice(0, 10);
+    }
+
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const alertEl = document.getElementById('maint-form-alert');
+        if (alertEl) alertEl.style.display = 'none';
+
+        const resourceId = document.getElementById('maint-input-resource').value;
+        const dateStr    = document.getElementById('maint-input-date').value;
+        const startTime  = document.getElementById('maint-input-start').value;
+        const endTime    = document.getElementById('maint-input-end').value;
+        const reason     = document.getElementById('maint-input-reason').value.trim();
+
+        if (!resourceId || !dateStr || !startTime || !endTime || !reason) {
+            if (alertEl) {
+                alertEl.style.display = 'block';
+                alertEl.style.background = '#fef2f2';
+                alertEl.style.color = '#b91c1c';
+                alertEl.textContent = 'Please fill all required fields.';
+            }
+            return;
+        }
+
+        const startAt = `${dateStr}T${startTime}:00`;
+        const endAt   = `${dateStr}T${endTime}:00`;
+
+        if (new Date(endAt) <= new Date(startAt)) {
+            if (alertEl) {
+                alertEl.style.display = 'block';
+                alertEl.style.background = '#fef2f2';
+                alertEl.style.color = '#b91c1c';
+                alertEl.textContent = 'End time must be after start time.';
+            }
+            return;
+        }
+
+        const saveBtn = document.getElementById('btn-save-maintenance');
+        if (saveBtn) {
+            saveBtn.disabled = true;
+            saveBtn.textContent = 'Saving...';
+        }
+
+        try {
+            const response = await fetch('/api/maintenance', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    resource_id: parseInt(resourceId, 10),
+                    start_at:    startAt,
+                    end_at:      endAt,
+                    reason,
+                    status:      'MAINTENANCE'
+                })
+            });
+
+            const result = await response.json();
+
+            if (response.ok && result.success) {
+                if (alertEl) {
+                    alertEl.style.display = 'block';
+                    alertEl.style.background = '#dcfce7';
+                    alertEl.style.color = '#15803d';
+                    alertEl.textContent = '✓ Maintenance scheduled successfully!';
+                }
+                form.reset();
+                if (dateInput) dateInput.value = dateStr;
+                await loadMaintenanceReport();
+                await loadSummaryStats(getFilters());
+            } else {
+                if (alertEl) {
+                    alertEl.style.display = 'block';
+                    alertEl.style.background = '#fef2f2';
+                    alertEl.style.color = '#b91c1c';
+                    alertEl.textContent = result.message || 'Failed to schedule maintenance.';
+                }
+            }
+        } catch (err) {
+            if (alertEl) {
+                alertEl.style.display = 'block';
+                alertEl.style.background = '#fef2f2';
+                alertEl.style.color = '#b91c1c';
+                alertEl.textContent = err.message || 'Error scheduling maintenance.';
+            }
+        } finally {
+            if (saveBtn) {
+                saveBtn.disabled = false;
+                saveBtn.textContent = '➕ Schedule Maintenance';
+            }
+        }
+    });
+
+    document.getElementById('btn-maint-filter-apply')?.addEventListener('click', () => loadMaintenanceReport());
+    document.getElementById('btn-maint-filter-reset')?.addEventListener('click', () => {
+        const dateEl = document.getElementById('maint-filter-date');
+        const resEl  = document.getElementById('maint-filter-resource');
+        const statEl = document.getElementById('maint-filter-status');
+        if (dateEl) dateEl.value = '';
+        if (resEl)  resEl.value = '';
+        if (statEl) statEl.value = '';
+        loadMaintenanceReport();
+    });
+}
+
 // ── Load all reports ─────────────────────────────────────────
 export function loadAllReports() {
     const filters = getFilters();
@@ -627,10 +983,11 @@ export function loadAllReports() {
     loadReport1(filters);
     loadReport2(filters);
     loadReport3(filters);
+    loadMaintenanceReport();
 }
 
 // ── Boot & Event Listeners ───────────────────────────────────
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     // Apply filter button
     document.getElementById('t3-filter-apply')
         ?.addEventListener('click', loadAllReports);
@@ -653,6 +1010,16 @@ document.addEventListener('DOMContentLoaded', () => {
         ?.addEventListener('click', exportInsightfulLabCSV);
     document.getElementById('t3-export-r3')
         ?.addEventListener('click', () => exportStandardCSV(report3Data, 'audit_activity_report.csv'));
+    document.getElementById('t3-export-maint')
+        ?.addEventListener('click', () => exportStandardCSV(maintenanceReportData, 'maintenance_report_' + new Date().toISOString().slice(0, 10) + '.csv'));
+
+    // Expose helpers globally
+    window.loadAllReports = loadAllReports;
+    window.loadMaintenanceReport = loadMaintenanceReport;
+
+    // Init maintenance management form and resources
+    await initMaintenanceResources();
+    initMaintenanceForm();
 
     // Initial load
     ensureResourcesLoaded().then(() => {

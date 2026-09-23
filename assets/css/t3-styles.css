@@ -319,6 +319,7 @@
 .t3-badge-cancelled  { background: #f3f4f6; color: #374151; }
 .t3-badge-preempted  { background: #fce7f3; color: #9d174d; }
 .t3-badge-completed  { background: #dbeafe; color: #1e40af; }
+.t3-badge-maintenance{ background: #ffedd5; color: #c2410c; border: 1px solid #fed7aa; }
 .t3-badge-default    { background: #f3f4f6; color: #374151; }
 
 /* -------------------------------------------------------

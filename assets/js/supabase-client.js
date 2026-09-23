@@ -145,7 +145,19 @@ const SEED_DATA = {
         { notification_id: 3, user_id: 2, booking_id: 3, type: 'BOOKING_DENIED', title: 'Booking Denied', message: 'Your booking request was denied: slot already taken.', is_read: false, read_at: null, created_at: new Date(Date.now() - 50000000).toISOString() },
         { notification_id: 4, user_id: 5, booking_id: 2, type: 'BOOKING_PENDING', title: 'New Pending Approval', message: 'A maintenance booking requires your administrative review.', is_read: false, read_at: null, created_at: new Date().toISOString() }
     ],
-    concerns: []
+    concerns: [],
+    resource_unavailability: [
+        {
+            id: 1,
+            resource_id: 5, // MB 407 A
+            start_at: '2026-09-25T10:00:00',
+            end_at:   '2026-09-25T12:00:00',
+            reason:   'Computer Servicing',
+            status:   'MAINTENANCE',
+            created_by: 5, // Admin User
+            created_at: new Date().toISOString()
+        }
+    ]
 };
 
 // Inject 30 days of recurring bookings for AC 301 (09:00 - 11:00)
@@ -201,7 +213,7 @@ class LocalDB {
 }
 
 // Ensure database tables exist in localStorage
-['roles', 'users', 'resources', 'bookings', 'audit_logs', 'notifications', 'concerns'].forEach(t => LocalDB.get(t));
+['roles', 'users', 'resources', 'bookings', 'audit_logs', 'notifications', 'concerns', 'resource_unavailability'].forEach(t => LocalDB.get(t));
 
 // ── Query Builder that mirrors Supabase PostgREST Client ─────
 class MockQueryBuilder {
@@ -302,6 +314,11 @@ class MockQueryBuilder {
         return this;
     }
 
+    maybeSingle() {
+        this.isSingle = true;
+        return this;
+    }
+
     async _execute() {
         let items = LocalDB.get(this.tableName);
 
@@ -312,7 +329,8 @@ class MockQueryBuilder {
                 bookings: 'booking_id',
                 audit_logs: 'audit_id',
                 notifications: 'notification_id',
-                concerns: 'concern_id'
+                concerns: 'concern_id',
+                resource_unavailability: 'id'
             }[this.tableName] || 'id';
 
             let maxId = items.reduce((m, r) => Math.max(m, r[pkField] || 0), 0);
@@ -392,7 +410,7 @@ class MockQueryBuilder {
             // Join users
             if (this.selectSpec.includes('users')) {
                 const users = LocalDB.get('users');
-                const uId = copy.requested_by || copy.actor_user_id || copy.user_id;
+                const uId = copy.requested_by || copy.actor_user_id || copy.created_by || copy.user_id;
                 const userObj = users.find(u => u.user_id === uId);
                 copy.users = userObj ? { name: userObj.name, email: userObj.email } : null;
             }
@@ -455,3 +473,5 @@ export const supabase = {
         return new MockQueryBuilder(tableName);
     }
 };
+
+export { LocalDB, SEED_DATA };

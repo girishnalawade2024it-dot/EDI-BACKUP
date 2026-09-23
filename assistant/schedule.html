@@ -143,45 +143,95 @@ async function loadSchedule() {
 
     const { data: bookings, error } = await query;
 
+    // Fetch maintenance periods for labs on this date
+    let maintQuery = supabase
+        .from('resource_unavailability')
+        .select(`
+            id, resource_id, start_at, end_at, reason, status,
+            resources ( resource_id, room_code, resource_type, block )
+        `)
+        .neq('status', 'CANCELLED')
+        .lte('start_at', dayEnd)
+        .gte('end_at', dayStart);
+
+    if (labId) {
+        maintQuery = maintQuery.eq('resource_id', parseInt(labId, 10));
+    }
+    const { data: maintenances } = await maintQuery;
+
     if (error) {
         tbody.innerHTML = `<tr><td colspan="7" style="color:#dc2626;padding:16px;text-align:center;">Failed to load schedule: ${error.message}</td></tr>`;
         return;
     }
 
     // Filter to labs only
-    const rows = (bookings || []).filter(b => b.resources?.resource_type === 'Lab');
+    const bookingRows = (bookings || []).filter(b => b.resources?.resource_type === 'Lab');
+    const maintRows   = (maintenances || []).filter(m => m.resources?.resource_type === 'Lab');
 
+    const totalSessions = bookingRows.length + maintRows.length;
     const d = new Date(dateStr);
     document.getElementById('schedule-subtitle').textContent = 
-        `${d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })} • ${rows.length} bookings`;
+        `${d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })} • ${totalSessions} sessions (${maintRows.length} maintenance)`;
 
-    if (rows.length === 0) {
+    if (totalSessions === 0) {
         tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:24px;color:#6b7280;">No laboratory sessions scheduled for this date.</td></tr>';
         return;
     }
 
     const badgeCls = {
-        APPROVED:  't3-badge-approved',
-        PENDING:   't3-badge-pending',
-        DENIED:    't3-badge-denied',
-        CANCELLED: 't3-badge-cancelled',
-        PREEMPTED: 't3-badge-preempted',
+        APPROVED:    't3-badge-approved',
+        PENDING:     't3-badge-pending',
+        DENIED:      't3-badge-denied',
+        CANCELLED:   't3-badge-cancelled',
+        PREEMPTED:   't3-badge-preempted',
+        MAINTENANCE: 't3-badge-maintenance',
     };
 
-    tbody.innerHTML = rows.map(b => {
-        const start = new Date(b.start_at);
-        const end   = new Date(b.end_at);
+    // Combine booking rows and maintenance rows, sorted by start time
+    const combined = [
+        ...bookingRows.map(b => ({
+            room: b.resources?.room_code || '—',
+            block: b.resources?.block || 'Main',
+            start_at: b.start_at,
+            end_at: b.end_at,
+            user: b.users?.name || 'Unknown',
+            email: b.users?.email || '',
+            type: b.booking_type || 'ACADEMIC',
+            purpose: b.purpose || '—',
+            headcount: b.headcount ? b.headcount + ' pax' : '—',
+            status: b.status,
+            isMaint: false
+        })),
+        ...maintRows.map(m => ({
+            room: m.resources?.room_code || '—',
+            block: m.resources?.block || 'Main',
+            start_at: m.start_at,
+            end_at: m.end_at,
+            user: 'Maintenance Admin',
+            email: 'admin@college.edu',
+            type: 'MAINTENANCE',
+            purpose: m.reason || 'Scheduled Maintenance / Servicing',
+            headcount: 'Unavailable',
+            status: 'MAINTENANCE',
+            isMaint: true
+        }))
+    ].sort((a, b) => new Date(a.start_at) - new Date(b.start_at));
+
+    tbody.innerHTML = combined.map(item => {
+        const start = new Date(item.start_at);
+        const end   = new Date(item.end_at);
         const timeStr = `${start.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})} – ${end.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}`;
+        const rowStyle = item.isMaint ? 'background:#fffbeb;' : '';
 
         return `
-            <tr>
-                <td><strong>🔬 ${b.resources?.room_code || '—'}</strong> (${b.resources?.block || 'Main'})</td>
+            <tr style="${rowStyle}">
+                <td><strong>${item.isMaint ? '🛠️' : '🔬'} ${item.room}</strong> (${item.block})</td>
                 <td><strong>${timeStr}</strong></td>
-                <td>${b.users?.name || 'Unknown'}<br><span style="font-size:12px;color:#6b7280;">${b.users?.email || ''}</span></td>
-                <td>${b.booking_type || 'ACADEMIC'}</td>
-                <td>${b.purpose || '—'}</td>
-                <td>${b.headcount ? b.headcount + ' pax' : '—'}</td>
-                <td><span class="t3-badge ${badgeCls[b.status] || 't3-badge-default'}">${b.status}</span></td>
+                <td>${item.user}<br><span style="font-size:12px;color:#6b7280;">${item.email}</span></td>
+                <td>${item.type}</td>
+                <td>${item.purpose}</td>
+                <td>${item.headcount}</td>
+                <td><span class="t3-badge ${badgeCls[item.status] || 't3-badge-default'}">${item.status}</span></td>
             </tr>
         `;
     }).join('');
