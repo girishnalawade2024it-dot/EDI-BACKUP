@@ -25,6 +25,12 @@ from backend.api import (
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 
+try:
+    from dotenv import load_dotenv
+    load_dotenv(ROOT_DIR / ".env")
+except ImportError:
+    pass
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):

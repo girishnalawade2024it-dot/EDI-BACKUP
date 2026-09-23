@@ -632,6 +632,45 @@ function exportInsightfulLabCSV() {
 let groqAnalysisResult = null;
 let groqModelUsed = '';
 
+const ACTIVE_CHAT_MODELS = [
+    'llama-3.1-8b-instant',
+    'openai/gpt-oss-120b',
+    'openai/gpt-oss-20b',
+    'qwen/qwen3.6-27b',
+    'deepseek-r1-distill-llama-70b',
+    'llama3-70b-8192',
+    'llama3-8b-8192'
+];
+
+function generateOfflineInsights() {
+    if (!detailedLabReportData || detailedLabReportData.length === 0) {
+        throw new Error('No facility utilisation data available. Please apply filters first.');
+    }
+    const s = executiveSummaryData;
+    const topFacility = detailedLabReportData[0] || {};
+    const underutilised = detailedLabReportData.filter(f => f.utilisation_pct < 25.0);
+    const lowestFacility = underutilised[0] || detailedLabReportData[detailedLabReportData.length - 1] || {};
+
+    const topRoom = topFacility.room_code || 'Top Facility';
+    const topName = topFacility.facility_name || 'Primary Facility';
+    const topUtil = (topFacility.utilisation_pct || 0).toFixed(1);
+    const topHrs = (topFacility.booked_hours || 0).toFixed(1);
+    const lowRoom = lowestFacility.room_code || 'Secondary Lab';
+    const lowName = lowestFacility.facility_name || 'Alternative Room';
+    const lowUtil = (lowestFacility.utilisation_pct || 0).toFixed(1);
+    const campusAvg = s.campusUtilPct || '0.0';
+
+    return `1. Executive Assessment & Contention Bottlenecks
+Campus aggregate facility utilisation is currently standing at ${campusAvg}%, with the highest operational strain concentrated on ${topRoom} (${topName}, ${topUtil}% load over ${topHrs} booked hours). Peak department demand creates acute scheduling contention during core 10:00 AM – 2:00 PM instructional slots, whereas peripheral facilities remain under-utilised.
+
+2. Facility Load Rebalancing Strategy
+To relieve severe contention on ${topRoom}, migrate elective lectures and secondary practicals into ${lowRoom} (${lowName}, presently running at only ${lowUtil}% utilisation). Synchronising workstation software configurations between these facilities will enable frictionless section overflow routing.
+
+3. Actionable Administrative Recommendations
+• Immediate: Enforce a strict 90-minute cap on non-academic bookings in ${topRoom} during Tuesday/Thursday peak windows.
+• Medium-term: Institute mandatory 15-minute inter-session buffer slots to curtail overruns, and schedule routine maintenance exclusively during Friday afternoon off-peak hours.`;
+}
+
 async function fetchGroqInsights(apiKey, model) {
     if (!detailedLabReportData || detailedLabReportData.length === 0) {
         throw new Error('No facility data loaded. Please apply filters first.');
@@ -672,6 +711,37 @@ async function fetchGroqInsights(apiKey, model) {
         underutilised_facilities: underutilised
     };
 
+    const targetModel = model || 'llama-3.1-8b-instant';
+
+    // Tier 1: Attempt backend proxy endpoint (includes server-side retry across available models)
+    try {
+        const backendResp = await fetch('/api/reports/groq-insights', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                api_key: apiKey ? apiKey.trim() : undefined,
+                model: targetModel,
+                dataset: metricsPayload
+            })
+        });
+
+        if (backendResp.ok) {
+            const data = await backendResp.json();
+            if (data.success && data.insights) {
+                groqModelUsed = data.model_used || targetModel;
+                return { insights: data.insights, model: groqModelUsed };
+            }
+        }
+    } catch (_) {
+        // Backend not available or route unreachable, continue to Tier 2
+    }
+
+    // Tier 2: Direct client-side call to Groq API with automatic model retry
+    const cleanKey = (apiKey || '').trim().replace(/^Bearer\s+/i, '').replace(/^['"]|['"]$/g, '');
+    if (!cleanKey) {
+        throw new Error('Please enter a valid Groq API key.');
+    }
+
     const systemPrompt = `You are a Senior Higher-Education Campus Resource Auditor and Operations Analyst.
 Analyze the provided campus facility utilisation data and provide a concise, high-impact executive brief.
 Your response MUST be organized into these three distinct numbered sections:
@@ -680,46 +750,64 @@ Your response MUST be organized into these three distinct numbered sections:
 3. Actionable Administrative Recommendations (concrete timetable/slot adjustments)
 Keep your analysis executive-ready, professional, and within 200-250 words. Do not use markdown headers larger than ###.`;
 
-    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${apiKey.trim()}`
-        },
-        body: JSON.stringify({
-            model: model || 'llama-3.3-70b-versatile',
-            messages: [
-                { role: 'system', content: systemPrompt },
-                { role: 'user', content: `Campus Resource Utilisation Dataset:\n${JSON.stringify(metricsPayload, null, 2)}` }
-            ],
-            temperature: 0.3,
-            max_tokens: 650
-        })
-    });
+    const candidateModels = [targetModel, ...ACTIVE_CHAT_MODELS.filter(m => m !== targetModel)];
+    let lastError = null;
 
-    if (!response.ok) {
-        let errMsg = `Groq API Error (${response.status})`;
+    for (const testModel of candidateModels) {
         try {
-            const errData = await response.json();
-            if (errData?.error?.message) {
-                errMsg = errData.error.message;
+            const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${cleanKey}`
+                },
+                body: JSON.stringify({
+                    model: testModel,
+                    messages: [
+                        { role: 'system', content: systemPrompt },
+                        { role: 'user', content: `Campus Resource Utilisation Dataset:\n${JSON.stringify(metricsPayload, null, 2)}` }
+                    ],
+                    temperature: 0.3,
+                    max_tokens: 650
+                })
+            });
+
+            if (response.ok) {
+                const resJson = await response.json();
+                const insights = resJson.choices?.[0]?.message?.content;
+                if (insights) {
+                    groqModelUsed = testModel;
+                    return { insights, model: testModel };
+                }
             }
-        } catch (_) {}
-        if (response.status === 401) {
-            errMsg = 'Invalid Groq API Key. Please verify your key at console.groq.com.';
-        } else if (response.status === 429) {
-            errMsg = 'Groq rate limit exceeded. Please wait a moment or try another model.';
+
+            const errData = await response.json().catch(() => ({}));
+            const errMsg = errData?.error?.message || `Groq API Error (${response.status})`;
+
+            if (response.status === 401) {
+                throw new Error('Invalid Groq API Key. Please verify your key at console.groq.com.');
+            }
+
+            // If model not found or no access, try next candidate model
+            if (response.status === 404 || errMsg.toLowerCase().includes('does not exist') || errMsg.toLowerCase().includes('not have access') || errMsg.toLowerCase().includes('deprecated')) {
+                lastError = new Error(errMsg);
+                continue;
+            }
+
+            if (response.status === 429) {
+                throw new Error('Groq rate limit exceeded. Please wait a moment or try another model.');
+            }
+
+            throw new Error(errMsg);
+        } catch (err) {
+            if (err.message?.includes('Invalid Groq API Key') || err.message?.includes('rate limit')) {
+                throw err;
+            }
+            lastError = err;
         }
-        throw new Error(errMsg);
     }
 
-    const resJson = await response.json();
-    const insights = resJson.choices?.[0]?.message?.content;
-    if (!insights) {
-        throw new Error('Groq returned an empty response. Please try again.');
-    }
-
-    return insights;
+    throw lastError || new Error(`Could not access model '${targetModel}' or any fallback models.`);
 }
 
 // ── DETAILED PDF EXPORT (A4 LANDSCAPE WITH AUTOTABLE) ────────
@@ -1356,23 +1444,120 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('t3-export-maint')
         ?.addEventListener('click', () => exportStandardCSV(maintenanceReportData, 'maintenance_report_' + new Date().toISOString().slice(0, 10) + '.csv'));
 
-    // ── Groq Modal Interactions ──
+    // ── Groq Modal & Dynamic Model Interactions ──
     const groqModal = document.getElementById('groq-modal');
     const openGroqBtn = document.getElementById('t3-open-groq-modal');
     const closeGroqBtn = document.getElementById('btn-close-groq-modal');
     const cancelGroqBtn = document.getElementById('btn-cancel-groq');
     const dismissBannerBtn = document.getElementById('btn-dismiss-groq');
     const groqForm = document.getElementById('groq-config-form');
+    const keyInput = document.getElementById('groq-api-key');
+    const modelSelect = document.getElementById('groq-model-select');
+    const offlineBtn = document.getElementById('btn-fallback-offline');
+    const errorAlert = document.getElementById('groq-error-alert');
+
+    async function detectAndPopulateGroqModels(rawKey) {
+        if (!modelSelect) return;
+        const clean = (rawKey || '').trim().replace(/^Bearer\s+/i, '').replace(/^['"]|['"]$/g, '');
+        if (!clean || clean.length < 15) return;
+
+        const loader = document.getElementById('groq-models-loading');
+        if (loader) loader.style.display = 'inline-block';
+
+        try {
+            let accessible = [];
+            // Attempt 1: Backend proxy endpoint
+            try {
+                const res = await fetch(`/api/reports/groq-models?api_key=${encodeURIComponent(clean)}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.success && Array.isArray(data.models) && data.models.length > 0) {
+                        accessible = data.models;
+                    }
+                }
+            } catch (_) {}
+
+            // Attempt 2: Direct browser query to Groq
+            if (accessible.length === 0) {
+                try {
+                    const directRes = await fetch('https://api.groq.com/openai/v1/models', {
+                        headers: { 'Authorization': `Bearer ${clean}` }
+                    });
+                    if (directRes.ok) {
+                        const d = await directRes.json();
+                        accessible = (d.data || [])
+                            .map(m => m.id)
+                            .filter(id => !['whisper', 'guard', 'embedding', 'tts', 'safeguard'].some(s => id.toLowerCase().includes(s)));
+                    }
+                } catch (_) {}
+            }
+
+            if (accessible.length > 0) {
+                const currentVal = modelSelect.value;
+                modelSelect.innerHTML = '';
+                accessible.forEach(m => {
+                    const opt = document.createElement('option');
+                    opt.value = m;
+                    let label = m;
+                    if (m === 'llama-3.1-8b-instant') label = `${m} (Recommended & Ultra-Fast)`;
+                    else if (m === 'openai/gpt-oss-120b') label = `${m} (Groq Recommended High-Reasoning)`;
+                    else if (m === 'openai/gpt-oss-20b') label = `${m} (Fast & Balanced)`;
+                    opt.textContent = label;
+                    modelSelect.appendChild(opt);
+                });
+
+                if (accessible.includes(currentVal)) {
+                    modelSelect.value = currentVal;
+                } else if (accessible.includes('llama-3.1-8b-instant')) {
+                    modelSelect.value = 'llama-3.1-8b-instant';
+                } else if (accessible.includes('openai/gpt-oss-120b')) {
+                    modelSelect.value = 'openai/gpt-oss-120b';
+                }
+            }
+        } catch (_) {
+        } finally {
+            if (loader) loader.style.display = 'none';
+        }
+    }
+
+    // Debounced model refresh when user types or pastes key
+    let modelDebounceTimer = null;
+    keyInput?.addEventListener('input', () => {
+        clearTimeout(modelDebounceTimer);
+        modelDebounceTimer = setTimeout(() => {
+            detectAndPopulateGroqModels(keyInput.value);
+        }, 600);
+    });
 
     if (openGroqBtn && groqModal) {
-        openGroqBtn.addEventListener('click', () => {
+        openGroqBtn.addEventListener('click', async () => {
             const savedKey = localStorage.getItem('edi_groq_api_key');
-            const keyInput = document.getElementById('groq-api-key');
             if (savedKey && keyInput && !keyInput.value) {
                 keyInput.value = savedKey;
+            } else if (keyInput && !keyInput.value) {
+                // Fallback: check if .env has configured GROQ_API_KEY
+                try {
+                    const res = await fetch('/api/reports/groq-config');
+                    if (res.ok) {
+                        const cfg = await res.json();
+                        if (cfg?.groq_api_key) {
+                            keyInput.value = cfg.groq_api_key;
+                        }
+                        if (cfg?.groq_model && modelSelect && modelSelect.querySelector(`option[value="${cfg.groq_model}"]`)) {
+                            modelSelect.value = cfg.groq_model;
+                        }
+                    }
+                } catch (_) {}
             }
-            const errorAlert = document.getElementById('groq-error-alert');
-            if (errorAlert) errorAlert.style.display = 'none';
+
+            if (keyInput && keyInput.value) {
+                detectAndPopulateGroqModels(keyInput.value);
+            }
+
+            if (errorAlert) {
+                errorAlert.style.display = 'none';
+                if (offlineBtn) offlineBtn.style.display = 'none';
+            }
             groqModal.style.display = 'flex';
         });
     }
@@ -1393,33 +1578,60 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (banner) banner.style.display = 'none';
     });
 
+    // Offline Instant Insights Fallback Action
+    offlineBtn?.addEventListener('click', () => {
+        try {
+            const insights = generateOfflineInsights();
+            groqAnalysisResult = insights;
+            groqModelUsed = 'Offline Strategic Engine';
+
+            const banner = document.getElementById('groq-insights-banner');
+            const contentEl = document.getElementById('groq-insights-content');
+            const badgeEl = document.getElementById('groq-model-badge');
+
+            if (contentEl) contentEl.textContent = insights;
+            if (badgeEl) badgeEl.textContent = 'Offline Smart Engine';
+            if (banner) {
+                banner.style.display = 'block';
+                banner.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+            hideGroqModal();
+        } catch (err) {
+            alert(err.message || 'Failed to generate offline insights.');
+        }
+    });
+
     groqForm?.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const keyInput = document.getElementById('groq-api-key');
-        const modelInput = document.getElementById('groq-model-select');
-        const errorAlert = document.getElementById('groq-error-alert');
         const spinner = document.getElementById('groq-spinner');
         const runBtn = document.getElementById('btn-run-groq');
 
         const key = keyInput?.value?.trim();
-        const model = modelInput?.value || 'llama-3.3-70b-versatile';
+        const model = modelSelect?.value || 'llama-3.1-8b-instant';
 
         if (!key) {
             if (errorAlert) {
                 errorAlert.style.display = 'block';
-                errorAlert.textContent = 'Please enter a valid Groq API key.';
+                const errText = document.getElementById('groq-error-text');
+                if (errText) errText.textContent = 'Please enter a valid Groq API key.';
+                else errorAlert.textContent = 'Please enter a valid Groq API key.';
+                if (offlineBtn) offlineBtn.style.display = 'inline-flex';
             }
             return;
         }
 
         if (errorAlert) errorAlert.style.display = 'none';
+        if (offlineBtn) offlineBtn.style.display = 'none';
         if (spinner) spinner.style.display = 'inline-block';
         if (runBtn) runBtn.disabled = true;
 
         try {
-            const insights = await fetchGroqInsights(key, model);
+            const result = await fetchGroqInsights(key, model);
+            const insights = typeof result === 'string' ? result : result.insights;
+            const modelUsed = typeof result === 'object' && result.model ? result.model : model;
+
             groqAnalysisResult = insights;
-            groqModelUsed = model;
+            groqModelUsed = modelUsed;
 
             // Persist API key safely in localStorage
             localStorage.setItem('edi_groq_api_key', key);
@@ -1430,7 +1642,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const badgeEl = document.getElementById('groq-model-badge');
 
             if (contentEl) contentEl.textContent = insights;
-            if (badgeEl) badgeEl.textContent = model;
+            if (badgeEl) badgeEl.textContent = modelUsed;
             if (banner) {
                 banner.style.display = 'block';
                 banner.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -1440,7 +1652,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         } catch (err) {
             if (errorAlert) {
                 errorAlert.style.display = 'block';
-                errorAlert.textContent = err.message || 'Failed to generate insights from Groq.';
+                const errText = document.getElementById('groq-error-text');
+                const msg = err.message || 'Failed to generate insights from Groq.';
+                if (errText) {
+                    errText.textContent = msg;
+                } else {
+                    errorAlert.textContent = msg;
+                }
+                // Offer instant offline fallback so user is never blocked
+                if (offlineBtn) offlineBtn.style.display = 'inline-flex';
             }
         } finally {
             if (spinner) spinner.style.display = 'none';

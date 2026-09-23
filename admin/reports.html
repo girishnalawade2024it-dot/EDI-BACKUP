@@ -140,7 +140,7 @@
             <span>🤖</span> Groq AI Strategic Analysis &amp; Scheduling Recommendations
         </h4>
         <div style="display:flex;gap:8px;align-items:center;">
-            <span id="groq-model-badge" style="font-size:11px;background:#dcfce7;color:#15803d;padding:2px 8px;border-radius:9999px;font-weight:600;">llama-3.3-70b-versatile</span>
+            <span id="groq-model-badge" style="font-size:11px;background:#dcfce7;color:#15803d;padding:2px 8px;border-radius:9999px;font-weight:600;">llama-3.1-8b-instant</span>
             <button type="button" id="btn-dismiss-groq" style="background:none;border:none;color:#6b7280;cursor:pointer;font-size:18px;line-height:1;">&times;</button>
         </div>
     </div>
@@ -337,17 +337,31 @@
             </div>
 
             <div style="margin-bottom:18px;">
-                <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:4px;">
-                    Select Groq LLM Model
-                </label>
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+                    <label style="font-size:12px;font-weight:600;color:#374151;margin:0;">
+                        Select Groq LLM Model
+                    </label>
+                    <span id="groq-models-loading" style="display:none;font-size:11px;color:#059669;font-weight:500;">
+                        <span class="t3-stat-loading" style="width:10px;height:10px;border-width:2px;display:inline-block;vertical-align:middle;margin-right:4px;"></span> Checking your accessible models...
+                    </span>
+                </div>
                 <select id="groq-model-select" style="width:100%;padding:9px 12px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;box-sizing:border-box;background:#fff;">
-                    <option value="llama-3.3-70b-versatile">Llama 3.3 70B Versatile (Recommended)</option>
-                    <option value="llama-3.1-8b-instant">Llama 3.1 8B Instant (Fastest)</option>
-                    <option value="mixtral-8x7b-32768">Mixtral 8x7B 32k</option>
+                    <option value="llama-3.1-8b-instant" selected>Llama 3.1 8B Instant (Recommended &amp; Ultra-Fast)</option>
+                    <option value="openai/gpt-oss-120b">GPT-OSS 120B (Groq Recommended High-Reasoning)</option>
+                    <option value="openai/gpt-oss-20b">GPT-OSS 20B (Fast &amp; Efficient)</option>
+                    <option value="qwen/qwen3.6-27b">Qwen 3.6 27B (Advanced Reasoning)</option>
+                    <option value="deepseek-r1-distill-llama-70b">DeepSeek R1 Distill 70B</option>
+                    <option value="llama3-70b-8192">Llama 3 70B 8k</option>
+                    <option value="llama3-8b-8192">Llama 3 8B 8k</option>
                 </select>
             </div>
 
-            <div id="groq-error-alert" style="display:none;background:#fef2f2;border:1px solid #fecaca;color:#991b1b;padding:10px 12px;border-radius:6px;font-size:12px;margin-bottom:14px;"></div>
+            <div id="groq-error-alert" style="display:none;background:#fef2f2;border:1px solid #fecaca;color:#991b1b;padding:12px 14px;border-radius:6px;font-size:12px;margin-bottom:14px;">
+                <div id="groq-error-text"></div>
+                <button type="button" id="btn-fallback-offline" style="display:none;margin-top:10px;background:#2563eb;color:#fff;border:none;border-radius:5px;padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer;align-items:center;gap:6px;">
+                    ⚡ Generate Instant Offline Insights (No Key Required)
+                </button>
+            </div>
 
             <div style="display:flex;justify-content:flex-end;gap:10px;">
                 <button type="button" id="btn-cancel-groq" class="btn btn-secondary" style="padding:8px 16px;">Cancel</button>
