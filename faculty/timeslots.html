@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Time Slots — Faculty Portal</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+<link rel="stylesheet" href="../assets/css/t3-styles.css">
+<style>
+.slot-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 16px;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    margin-bottom: 8px;
+    background: #ffffff;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+.slot-row:hover:not(.slot-disabled) {
+    border-color: #2563eb;
+    background: #f0f7ff;
+}
+.slot-row.slot-selected {
+    border-color: #2563eb;
+    background: #eff6ff;
+    box-shadow: 0 0 0 2px rgba(37,99,235,0.2);
+}
+.slot-disabled {
+    cursor: not-allowed;
+    background: #f9fafb;
+    opacity: 0.85;
+}
+</style>
+</head>
+<body>
+<div class="container">
+    <aside class="sidebar">
+        <div class="logo">🎓 Faculty Portal</div>
+        <nav class="nav">
+            <a href="dashboard.html">Dashboard</a>
+            <a href="resources.html" class="active">Book Resource</a>
+            <a href="history.html">Booking History</a>
+            <a href="concerns.html">My Concerns</a>
+            <a href="profile.html">Profile</a>
+            <a href="../login.html">Logout</a>
+        </nav>
+    </aside>
+
+    <main class="main">
+        <div class="topbar">
+            <h2>Slot Availability Browser</h2>
+            <div id="topbar-user">Faculty Member</div>
+        </div>
+
+        <!-- Selection Controls -->
+        <div class="card">
+            <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end;">
+                <div style="flex:1;min-width:220px;">
+                    <label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px;">Select Resource</label>
+                    <select id="select-resource" style="width:100%;padding:8px;border:1px solid #d1d5db;border-radius:6px;"></select>
+                </div>
+                <div style="flex:1;min-width:180px;">
+                    <label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px;">Select Date</label>
+                    <input type="date" id="select-date" style="width:100%;padding:8px;border:1px solid #d1d5db;border-radius:6px;">
+                </div>
+                <div>
+                    <button id="btn-refresh-slots" class="btn" style="height:38px;padding:0 20px;">View Slots</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Resource Info Banner -->
+        <div id="resource-banner" class="card" style="display:none;background:#f8fafc;border-left:4px solid #2563eb;">
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+                <div>
+                    <h3 id="banner-title" style="margin:0;">Room Code</h3>
+                    <p id="banner-desc" style="margin:4px 0 0 0;color:#6b7280;font-size:13px;">Details</p>
+                </div>
+                <div id="banner-status"></div>
+            </div>
+        </div>
+
+        <!-- Slots List -->
+        <div class="card">
+            <div class="t3-section-header">
+                <h3>Daily Schedule (08:00 AM – 06:00 PM)</h3>
+                <span style="font-size:13px;color:#6b7280;">30-minute intervals • Operating hours per SRS</span>
+            </div>
+
+            <div id="slots-container" style="margin-top:14px;">
+                <span class="t3-stat-loading" style="display:block;margin:20px auto;"></span>
+            </div>
+
+            <!-- Booking Action Panel -->
+            <div id="booking-action-panel" style="display:none;margin-top:20px;padding:16px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
+                    <div>
+                        <strong style="color:#1e40af;">Selected Time Window:</strong>
+                        <span id="selected-window-text" style="margin-left:8px;font-weight:600;color:#1e3a8a;"></span>
+                    </div>
+                    <button id="btn-proceed-booking" class="btn">Proceed to Book Slot →</button>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<script src="../assets/js/app.js"></script>
+<script type="module" src="../assets/js/t3-notifications.js"></script>
+<script type="module">
+import { supabase } from '../assets/js/supabase-client.js';
+import { requireAuth, populateTopbar } from '../assets/js/auth.js';
+import { CONFIG, todayLocalISO } from '../assets/js/config.js';
+
+const session = requireAuth('Faculty');
+if (session) {
+    populateTopbar();
+    initTimeslots();
+}
+
+let allResources = [];
+let selectedStartSlot = null;
+let selectedEndSlot = null;
+
+// Generate standard 30-min intervals between 08:00 and 18:00
+function generateTimeSlots() {
+    const slots = [];
+    const startHour = CONFIG.OPERATING_HOURS.START_HOUR; // 8
+    const endHour = CONFIG.OPERATING_HOURS.END_HOUR;     // 18
+
+    for (let h = startHour; h < endHour; h++) {
+        for (let m = 0; m < 60; m += CONFIG.SLOT_MINUTES) {
+            const nextM = m + CONFIG.SLOT_MINUTES;
+            const nextH = nextM >= 60 ? h + 1 : h;
+            const normM = nextM % 60;
+
+            const startStr = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+            const endStr   = `${String(nextH).padStart(2, '0')}:${String(normM).padStart(2, '0')}`;
+            slots.push({ start: startStr, end: endStr });
+        }
+    }
+    return slots;
+}
+
+async function initTimeslots() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const paramResId = urlParams.get('resource_id');
+    const paramDate  = urlParams.get('date');
+
+    const todayStr = todayLocalISO();
+    const dateInput = document.getElementById('select-date');
+    dateInput.min = todayStr;
+    dateInput.value = paramDate || todayStr;
+
+    // Load active resources
+    const { data: resources } = await supabase
+        .from('resources')
+        .select('*')
+        .eq('status', 'ACTIVE')
+        .order('room_code');
+
+    allResources = resources || [];
+    const resSelect = document.getElementById('select-resource');
+    resSelect.innerHTML = allResources.map(r => 
+        `<option value="${r.resource_id}" ${paramResId == r.resource_id ? 'selected' : ''}>${r.room_code} (${r.resource_type} - ${r.block || 'Main'})</option>`
+    ).join('');
+
+    document.getElementById('btn-refresh-slots').addEventListener('click', loadSlotsForCurrentSelection);
+    resSelect.addEventListener('change', loadSlotsForCurrentSelection);
+    dateInput.addEventListener('change', loadSlotsForCurrentSelection);
+
+    document.getElementById('btn-proceed-booking').addEventListener('click', () => {
+        const resId = resSelect.value;
+        const date  = dateInput.value;
+        if (!selectedStartSlot || !selectedEndSlot) return;
+        window.location.href = `booking.html?resource_id=${resId}&date=${date}&start=${selectedStartSlot}&end=${selectedEndSlot}`;
+    });
+
+    loadSlotsForCurrentSelection();
+}
+
+async function loadSlotsForCurrentSelection() {
+    selectedStartSlot = null;
+    selectedEndSlot = null;
+    document.getElementById('booking-action-panel').style.display = 'none';
+
+    const resSelect = document.getElementById('select-resource');
+    const dateInput = document.getElementById('select-date');
+    const container = document.getElementById('slots-container');
+
+    const resourceId = parseInt(resSelect.value, 10);
+    const dateStr = dateInput.value;
+
+    if (!resourceId || !dateStr) return;
+
+    const resObj = allResources.find(r => r.resource_id === resourceId);
+    const banner = document.getElementById('resource-banner');
+    if (resObj) {
+        banner.style.display = 'block';
+        document.getElementById('banner-title').textContent = `${resObj.room_code} — ${resObj.resource_type}`;
+        document.getElementById('banner-desc').textContent = `Block: ${resObj.block || '—'} | Capacity: ${resObj.capacity ? resObj.capacity + ' seats' : 'Flexible'} | Notes: ${resObj.notes || 'None'}`;
+    }
+
+    container.innerHTML = '<span class="t3-stat-loading" style="display:block;margin:20px auto;"></span>';
+
+    // Fetch existing bookings for this resource on this day
+    const dayStart = `${dateStr}T00:00:00`;
+    const dayEnd   = `${dateStr}T23:59:59`;
+
+    const { data: bookings } = await supabase
+        .from('bookings')
+        .select('booking_id, status, start_at, end_at, purpose, requested_by, users!bookings_requested_by_fkey(name)')
+        .eq('resource_id', resourceId)
+        .in('status', ['APPROVED', 'PENDING'])
+        .gte('start_at', dayStart)
+        .lte('end_at', dayEnd);
+
+    const activeBookings = bookings || [];
+    const baseSlots = generateTimeSlots();
+
+    const now = new Date();
+
+    container.innerHTML = baseSlots.map(slot => {
+        const slotStart = new Date(`${dateStr}T${slot.start}:00`);
+        const slotEnd   = new Date(`${dateStr}T${slot.end}:00`);
+
+        // Check if slot is in the past
+        const isPast = slotStart <= now;
+
+        // Check overlap: booking.start < slotEnd AND booking.end > slotStart
+        const overlap = activeBookings.find(b => {
+            const bStart = new Date(b.start_at);
+            const bEnd   = new Date(b.end_at);
+            return bStart < slotEnd && bEnd > slotStart;
+        });
+
+        let statusText = 'Available';
+        let badgeClass = 't3-badge-approved';
+        let isBookable = true;
+        let conflictInfo = '';
+
+        if (isPast) {
+            statusText = 'Past Time';
+            badgeClass = 't3-badge-default';
+            isBookable = false;
+        } else if (overlap) {
+            if (overlap.status === 'APPROVED') {
+                statusText = 'Booked';
+                badgeClass = 't3-badge-denied';
+                isBookable = false;
+                conflictInfo = `(${overlap.users?.name || 'Reserved'})`;
+            } else if (overlap.status === 'PENDING') {
+                statusText = 'Pending Approval';
+                badgeClass = 't3-badge-pending';
+                isBookable = false;
+                conflictInfo = `(${overlap.users?.name || 'Pending'})`;
+            }
+        }
+
+        const disabledClass = isBookable ? '' : 'slot-disabled';
+
+        return `
+            <div class="slot-row ${disabledClass}" data-start="${slot.start}" data-end="${slot.end}" data-bookable="${isBookable}">
+                <div>
+                    <strong style="font-size:15px;">${slot.start} – ${slot.end}</strong>
+                    <span style="font-size:13px;color:#6b7280;margin-left:8px;">${conflictInfo}</span>
+                </div>
+                <span class="t3-badge ${badgeClass}">${statusText}</span>
+            </div>
+        `;
+    }).join('');
+
+    // Wire selection logic
+    const slotElements = container.querySelectorAll('.slot-row[data-bookable="true"]');
+    slotElements.forEach(el => {
+        el.addEventListener('click', () => {
+            container.querySelectorAll('.slot-row').forEach(s => s.classList.remove('slot-selected'));
+            el.classList.add('slot-selected');
+            selectedStartSlot = el.dataset.start;
+            selectedEndSlot = el.dataset.end;
+
+            document.getElementById('booking-action-panel').style.display = 'block';
+            document.getElementById('selected-window-text').textContent = 
+                `${selectedStartSlot} to ${selectedEndSlot} on ${dateStr}`;
+        });
+    });
+}
+</script>
+</body>
+</html>

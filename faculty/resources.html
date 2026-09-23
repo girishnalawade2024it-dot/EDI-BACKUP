@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Browse Resources — Faculty Portal</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+<link rel="stylesheet" href="../assets/css/t3-styles.css">
+</head>
+<body>
+<div class="container">
+    <aside class="sidebar">
+        <div class="logo">🎓 Faculty Portal</div>
+        <nav class="nav">
+            <a href="dashboard.html">Dashboard</a>
+            <a href="resources.html" class="active">Book Resource</a>
+            <a href="history.html">Booking History</a>
+            <a href="concerns.html">My Concerns</a>
+            <a href="profile.html">Profile</a>
+            <a href="../login.html">Logout</a>
+        </nav>
+    </aside>
+
+    <main class="main">
+        <div class="topbar">
+            <h2>Campus Resources</h2>
+            <div id="topbar-user">Faculty Member</div>
+        </div>
+
+        <!-- Filter Controls -->
+        <div class="card">
+            <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end;">
+                <div style="flex:1;min-width:180px;">
+                    <label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px;">Target Date</label>
+                    <input type="date" id="filter-date" class="form-control" style="width:100%;padding:8px;border:1px solid #d1d5db;border-radius:6px;">
+                </div>
+                <div style="flex:1;min-width:160px;">
+                    <label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px;">Resource Type</label>
+                    <select id="filter-type" style="width:100%;padding:8px;border:1px solid #d1d5db;border-radius:6px;">
+                        <option value="">All Types</option>
+                        <option value="Lab">Laboratories</option>
+                        <option value="Classroom">Classrooms</option>
+                    </select>
+                </div>
+                <div style="flex:1;min-width:160px;">
+                    <label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px;">Block / Building</label>
+                    <select id="filter-block" style="width:100%;padding:8px;border:1px solid #d1d5db;border-radius:6px;">
+                        <option value="">All Blocks</option>
+                    </select>
+                </div>
+                <div>
+                    <button id="btn-apply-filters" class="btn" style="height:38px;padding:0 20px;">Search</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Resource List Grid -->
+        <div id="resources-grid" class="grid-3" style="margin-top:16px;">
+            <div class="card" style="grid-column:1/-1;text-align:center;">
+                <span class="t3-stat-loading" style="display:block;margin:20px auto;"></span>
+                <p style="color:#6b7280;">Loading available resources…</p>
+            </div>
+        </div>
+    </main>
+</div>
+
+<script src="../assets/js/app.js"></script>
+<script type="module" src="../assets/js/t3-notifications.js"></script>
+<script type="module">
+import { supabase } from '../assets/js/supabase-client.js';
+import { requireAuth, populateTopbar } from '../assets/js/auth.js';
+import { todayLocalISO } from '../assets/js/config.js';
+
+const session = requireAuth('Faculty');
+if (session) {
+    populateTopbar();
+    initPage();
+}
+
+async function initPage() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const dateParam = urlParams.get('date');
+    const todayStr = todayLocalISO();
+
+    const dateInput = document.getElementById('filter-date');
+    dateInput.min = todayStr;
+    dateInput.value = dateParam || todayStr;
+
+    // Load unique blocks
+    const { data: allRes } = await supabase.from('resources').select('block');
+    if (allRes) {
+        const blocks = [...new Set(allRes.map(r => r.block).filter(Boolean))];
+        const blockSelect = document.getElementById('filter-block');
+        blocks.forEach(b => {
+            const opt = document.createElement('option');
+            opt.value = b;
+            opt.textContent = b;
+            blockSelect.appendChild(opt);
+        });
+    }
+
+    document.getElementById('btn-apply-filters').addEventListener('click', loadResources);
+    dateInput.addEventListener('change', loadResources);
+    document.getElementById('filter-type').addEventListener('change', loadResources);
+    document.getElementById('filter-block').addEventListener('change', loadResources);
+
+    loadResources();
+}
+
+async function loadResources() {
+    const grid = document.getElementById('resources-grid');
+    grid.innerHTML = '<div class="card" style="grid-column:1/-1;text-align:center;"><span class="t3-stat-loading" style="display:block;margin:20px auto;"></span><p style="color:#6b7280;">Checking resource status…</p></div>';
+
+    const selectedDate = document.getElementById('filter-date').value || todayLocalISO();
+    const selectedType = document.getElementById('filter-type').value;
+    const selectedBlock = document.getElementById('filter-block').value;
+
+    let query = supabase.from('resources').select('*').eq('status', 'ACTIVE');
+    if (selectedType) query = query.eq('resource_type', selectedType);
+    if (selectedBlock) query = query.eq('block', selectedBlock);
+
+    const { data: resources, error } = await query.order('room_code');
+
+    if (error || !resources || resources.length === 0) {
+        grid.innerHTML = '<div class="card" style="grid-column:1/-1;text-align:center;padding:30px;color:#6b7280;">No active resources found matching your criteria.</div>';
+        return;
+    }
+
+    // Get bookings for this date to display availability overview
+    const dayStart = `${selectedDate}T00:00:00`;
+    const dayEnd   = `${selectedDate}T23:59:59`;
+
+    const { data: dayBookings } = await supabase
+        .from('bookings')
+        .select('resource_id, status, start_at, end_at')
+        .in('status', ['APPROVED', 'PENDING'])
+        .gte('start_at', dayStart)
+        .lte('end_at', dayEnd);
+
+    const bookingsByRes = {};
+    (dayBookings || []).forEach(b => {
+        if (!bookingsByRes[b.resource_id]) bookingsByRes[b.resource_id] = [];
+        bookingsByRes[b.resource_id].push(b);
+    });
+
+    grid.innerHTML = resources.map(res => {
+        const bks = bookingsByRes[res.resource_id] || [];
+        const approvedBks = bks.filter(b => b.status === 'APPROVED');
+        const pendingBks = bks.filter(b => b.status === 'PENDING');
+
+        let statusBadge = '<span class="t3-badge t3-badge-approved">Available All Day</span>';
+        if (approvedBks.length >= 5) {
+            statusBadge = '<span class="t3-badge t3-badge-denied">Fully Booked</span>';
+        } else if (approvedBks.length > 0 || pendingBks.length > 0) {
+            statusBadge = `<span class="t3-badge t3-badge-pending">${approvedBks.length} booked / ${pendingBks.length} pending</span>`;
+        }
+
+        const icon = res.resource_type === 'Lab' ? '🔬' : '🏫';
+
+        return `
+            <div class="card resource-card" style="display:flex;flex-direction:column;justify-content:space-between;">
+                <div>
+                    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
+                        <h3 style="margin:0;">${icon} ${res.room_code}</h3>
+                        ${statusBadge}
+                    </div>
+                    <p style="margin:4px 0;color:#4b5563;font-size:14px;"><strong>Type:</strong> ${res.resource_type}</p>
+                    <p style="margin:4px 0;color:#4b5563;font-size:14px;"><strong>Block:</strong> ${res.block || '—'}</p>
+                    <p style="margin:4px 0;color:#4b5563;font-size:14px;"><strong>Capacity:</strong> ${res.capacity ? `${res.capacity} persons` : 'Flexible'}</p>
+                    ${res.notes ? `<p style="margin:8px 0;font-size:13px;color:#6b7280;background:#f9fafb;padding:6px;border-radius:4px;">${res.notes}</p>` : ''}
+                </div>
+                <div style="display:flex;gap:8px;margin-top:16px;">
+                    <a class="btn btn-secondary" href="timeslots.html?resource_id=${res.resource_id}&date=${selectedDate}" style="flex:1;text-align:center;font-size:13px;padding:8px 4px;">View Slots</a>
+                    <a class="btn" href="booking.html?resource_id=${res.resource_id}&date=${selectedDate}" style="flex:1;text-align:center;font-size:13px;padding:8px 4px;">Book Now</a>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+</script>
+</body>
+</html>

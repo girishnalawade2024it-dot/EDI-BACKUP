@@ -1,0 +1,22 @@
+# Dependencies
+node_modules/
+
+# Environment variables / secrets
+.env
+.env.*
+!.env.example
+
+# Supabase local files
+supabase/.temp/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.db
+*.sqlite3
+.pytest_cache/

@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reports</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+<!-- Team 3: scoped styles -->
+<link rel="stylesheet" href="../assets/css/t3-styles.css">
+</head>
+<body>
+
+<div class="container">
+
+<aside class="sidebar">
+<div class="logo">🛠️ Admin Panel</div>
+
+<nav class="nav">
+<a href="dashboard.html">Dashboard</a>
+<a href="users.html">Users</a>
+<a href="labs.html">Laboratories</a>
+<a href="classrooms.html">Classrooms</a>
+<a href="resources.html">Resources</a>
+<a href="conflicts.html">Audit Log</a>
+<a href="reports.html" class="active">Reports</a>
+<a href="concerns.html">Concern Management</a>
+<a href="profile.html">Profile</a>
+<a href="../login.html">Logout</a>
+</nav>
+</aside>
+
+<main class="main">
+
+<div class="topbar">
+<h2>Executive Reports & Analytics</h2>
+<!-- t3-notifications.js injects bell here -->
+<div id="topbar-user">Administrator</div>
+</div>
+
+<!-- ── Summary Stat Cards (live from t3-reports.js) ── -->
+<div class="grid-3" style="margin-bottom:0;">
+
+<div class="card">
+<h3>Total Bookings</h3>
+<p style="font-size:30px;font-weight:bold;" id="t3-stat-total">
+    <span class="t3-stat-loading"></span>
+</p>
+</div>
+
+<div class="card">
+<h3>Approved</h3>
+<p style="font-size:30px;font-weight:bold;color:#15803d;" id="t3-stat-approved">
+    <span class="t3-stat-loading"></span>
+</p>
+</div>
+
+<div class="card">
+<h3>Denied</h3>
+<p style="font-size:30px;font-weight:bold;color:#991b1b;" id="t3-stat-denied">
+    <span class="t3-stat-loading"></span>
+</p>
+</div>
+
+</div>
+
+<div class="grid-3" style="margin-top:0;">
+
+<div class="card" style="margin-bottom:22px;">
+<h3>Success Rate</h3>
+<p style="font-size:30px;font-weight:bold;color:#1d4ed8;" id="t3-stat-success">
+    <span class="t3-stat-loading"></span>
+</p>
+</div>
+
+</div>
+
+<!-- ── Filters ── -->
+<div class="t3-filter-bar">
+    <div class="t3-filter-group">
+        <label for="t3-filter-from">Date From</label>
+        <input type="date" id="t3-filter-from">
+    </div>
+    <div class="t3-filter-group">
+        <label for="t3-filter-to">Date To</label>
+        <input type="date" id="t3-filter-to">
+    </div>
+    <div class="t3-filter-group">
+        <label for="t3-filter-facility">Specific Facility</label>
+        <select id="t3-filter-facility">
+            <option value="">All Facilities (11)</option>
+        </select>
+    </div>
+    <div class="t3-filter-group">
+        <label for="t3-filter-type">Resource Type</label>
+        <select id="t3-filter-type">
+            <option value="">All Types</option>
+            <option value="Lab">Laboratories Only</option>
+            <option value="Classroom">Classrooms Only</option>
+        </select>
+    </div>
+    <div class="t3-filter-group">
+        <label for="t3-filter-status">Booking Status</label>
+        <select id="t3-filter-status">
+            <option value="">All Statuses</option>
+            <option value="APPROVED">Approved</option>
+            <option value="PENDING">Pending</option>
+            <option value="DENIED">Denied</option>
+            <option value="CANCELLED">Cancelled</option>
+            <option value="PREEMPTED">Preempted</option>
+            <option value="COMPLETED">Completed</option>
+        </select>
+    </div>
+    <div class="t3-filter-actions">
+        <button class="btn" id="t3-filter-apply">Apply</button>
+        <button class="btn btn-secondary" id="t3-filter-reset">Reset</button>
+    </div>
+</div>
+
+<!-- ── Report 2: Lab-Wise Utilisation ── -->
+<div class="card" style="margin-bottom:24px;">
+<div class="t3-section-header">
+    <h3>📊 Lab-Wise Resource Utilisation Report</h3>
+    <button class="t3-export-btn" id="t3-export-r2">⬇ Export CSV</button>
+</div>
+<p style="font-size:13px;color:#6b7280;margin-bottom:4px;">
+    Comprehensive booked hours, capacity, and utilisation rates per lab based on approved bookings.
+</p>
+
+<div class="t3-table-wrap">
+<table>
+    <thead>
+        <tr>
+            <th>Facility / Room</th>
+            <th>Type & Block</th>
+            <th>Capacity & Equipment</th>
+            <th>Booked Hours</th>
+            <th>Available / Idle</th>
+        </tr>
+    </thead>
+    <tbody id="t3-r2-tbody">
+        <tr><td colspan="5"><span class="t3-stat-loading" style="display:block;margin:16px auto;"></span></td></tr>
+    </tbody>
+</table>
+</div>
+</div>
+
+<!-- ── Report 1: Booking Count ── -->
+<div class="card" style="margin-bottom:24px;">
+<div class="t3-section-header">
+    <h3>📋 Booking Count Report</h3>
+    <button class="t3-export-btn" id="t3-export-r1">⬇ Export CSV</button>
+</div>
+<p style="font-size:13px;color:#6b7280;margin-bottom:4px;">All bookings with resource and status detail, filtered by the controls above.</p>
+<div class="t3-table-wrap">
+<table>
+    <thead>
+        <tr>
+            <th>Booking #</th>
+            <th>Resource</th>
+            <th>Booking Type</th>
+            <th>Date & Time</th>
+            <th>Status</th>
+        </tr>
+    </thead>
+    <tbody id="t3-r1-tbody">
+        <tr><td colspan="5"><span class="t3-stat-loading" style="display:block;margin:12px auto;"></span></td></tr>
+    </tbody>
+</table>
+</div>
+</div>
+
+<!-- ── Report 3: Audit Activity ── -->
+<div class="card">
+<div class="t3-section-header">
+    <h3>🔍 Audit Activity Report</h3>
+    <button class="t3-export-btn" id="t3-export-r3">⬇ Export CSV</button>
+</div>
+<p style="font-size:13px;color:#6b7280;margin-bottom:4px;">Recent system events from the audit log. For full audit log with all filters, see <a href="conflicts.html" style="color:#2563eb;">Audit Log</a>.</p>
+<div class="t3-table-wrap">
+<table>
+    <thead>
+        <tr>
+            <th>#</th>
+            <th>Actor</th>
+            <th>Event</th>
+            <th>State Change</th>
+            <th>Timestamp</th>
+        </tr>
+    </thead>
+    <tbody id="t3-r3-tbody">
+        <tr><td colspan="5"><span class="t3-stat-loading" style="display:block;margin:12px auto;"></span></td></tr>
+    </tbody>
+</table>
+</div>
+</div>
+
+</main>
+</div>
+
+<script src="../assets/js/app.js"></script>
+<!-- Team 3 modules -->
+<script type="module" src="../assets/js/t3-notifications.js"></script>
+<script type="module" src="../assets/js/t3-reports.js"></script>
+<script type="module">
+import { requireAuth, populateTopbar } from '../assets/js/auth.js';
+requireAuth('Admin');
+populateTopbar();
+</script>
+</body>
+</html>

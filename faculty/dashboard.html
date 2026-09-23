@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Faculty Dashboard — Booking Portal</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+<link rel="stylesheet" href="../assets/css/t3-styles.css">
+</head>
+<body>
+<div class="container">
+    <aside class="sidebar">
+        <div class="logo">🎓 Faculty Portal</div>
+        <nav class="nav">
+            <a href="dashboard.html" class="active">Dashboard</a>
+            <a href="resources.html">Book Resource</a>
+            <a href="history.html">Booking History</a>
+            <a href="concerns.html">My Concerns</a>
+            <a href="profile.html">Profile</a>
+            <a href="../login.html">Logout</a>
+        </nav>
+    </aside>
+
+    <main class="main">
+        <div class="topbar">
+            <h2>Faculty Dashboard</h2>
+            <div id="topbar-user">Faculty Member</div>
+        </div>
+
+        <!-- Stat Cards -->
+        <div class="grid-3">
+            <div class="card">
+                <h3>Available Resources Today</h3>
+                <p id="stat-avail" style="font-size:28px;font-weight:bold;color:#16a34a;"><span class="t3-stat-loading"></span></p>
+            </div>
+            <div class="card">
+                <h3>My Approved Bookings</h3>
+                <p id="stat-approved" style="font-size:28px;font-weight:bold;color:#2563eb;"><span class="t3-stat-loading"></span></p>
+            </div>
+            <div class="card">
+                <h3>My Pending Requests</h3>
+                <p id="stat-pending" style="font-size:28px;font-weight:bold;color:#d97706;"><span class="t3-stat-loading"></span></p>
+            </div>
+        </div>
+
+        <!-- Calendar Widget Card -->
+        <div class="card">
+            <div class="t3-section-header">
+                <h3>📅 My Booking Schedule</h3>
+                <span style="font-size:12px;color:#6b7280;">Click a date to book or view slots</span>
+            </div>
+            <div id="calendar-container">
+                <span class="t3-stat-loading" style="display:block;margin:20px auto;"></span>
+            </div>
+        </div>
+
+        <!-- Upcoming Bookings Table -->
+        <div class="card">
+            <div class="t3-section-header">
+                <h3>Upcoming Bookings</h3>
+                <a href="history.html" style="font-size:13px;color:#2563eb;">View all history →</a>
+            </div>
+            <div class="t3-table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Ref #</th>
+                            <th>Resource</th>
+                            <th>Type</th>
+                            <th>Date & Time</th>
+                            <th>Purpose</th>
+                            <th>Status</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="upcoming-tbody">
+                        <tr><td colspan="7"><span class="t3-stat-loading" style="display:block;margin:12px auto;"></span></td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="card">
+            <h3>Quick Actions</h3>
+            <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:12px;">
+                <a class="btn" href="resources.html">➕ Book Resource</a>
+                <a class="btn btn-secondary" href="history.html">📜 View All History</a>
+                <a class="btn btn-secondary" href="profile.html">👤 My Profile</a>
+            </div>
+        </div>
+    </main>
+</div>
+
+<script src="../assets/js/app.js"></script>
+<script type="module" src="../assets/js/t3-notifications.js"></script>
+<script type="module">
+import { supabase } from '../assets/js/supabase-client.js';
+import { requireAuth, populateTopbar } from '../assets/js/auth.js';
+import { nowLocalISO } from '../assets/js/config.js';
+import { renderCalendar } from '../assets/js/calendar-widget.js';
+import { cancelBooking } from '../assets/js/booking-engine.js';
+
+const session = requireAuth('Faculty');
+if (session) {
+    populateTopbar();
+    loadDashboard(session);
+}
+
+async function loadDashboard(user) {
+    const nowIso = nowLocalISO();
+
+    // 1. Fetch available active resources count
+    const { count: activeCount } = await supabase
+        .from('resources')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'ACTIVE');
+    const availEl = document.getElementById('stat-avail');
+    if (availEl) availEl.textContent = activeCount ?? '—';
+
+    // 2. Fetch user's bookings
+    const { data: bookings, error } = await supabase
+        .from('bookings')
+        .select(`
+            booking_id, series_id, booking_type, status,
+            start_at, end_at, purpose, headcount,
+            resources ( room_code, resource_type, block )
+        `)
+        .eq('requested_by', user.userId)
+        .order('start_at', { ascending: true });
+
+    if (error) {
+        console.error('Error fetching bookings:', error);
+        return;
+    }
+
+    const rows = bookings || [];
+    const approved = rows.filter(b => b.status === 'APPROVED');
+    const pending = rows.filter(b => b.status === 'PENDING');
+
+    const appEl = document.getElementById('stat-approved');
+    if (appEl) appEl.textContent = approved.length;
+
+    const pendEl = document.getElementById('stat-pending');
+    if (pendEl) pendEl.textContent = pending.length;
+
+    // Render Calendar
+    renderCalendar('calendar-container', rows, (selectedDate) => {
+        window.location.href = `resources.html?date=${selectedDate}`;
+    });
+
+    // Render upcoming bookings
+    const upcoming = rows.filter(b => new Date(b.end_at) >= new Date() && ['APPROVED', 'PENDING'].includes(b.status));
+    const tbody = document.getElementById('upcoming-tbody');
+
+    if (!upcoming.length) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#6b7280;padding:20px;">No upcoming bookings found. <a href="resources.html" style="color:#2563eb;">Book a resource now</a>.</td></tr>';
+        return;
+    }
+
+    const badgeCls = {
+        APPROVED: 't3-badge-approved',
+        PENDING:  't3-badge-pending',
+        DENIED:   't3-badge-denied',
+        CANCELLED:'t3-badge-cancelled'
+    };
+
+    tbody.innerHTML = upcoming.map(b => {
+        const start = new Date(b.start_at);
+        const end = new Date(b.end_at);
+        const dateStr = start.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+        const timeStr = `${start.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})} - ${end.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}`;
+        
+        return `
+            <tr>
+                <td><strong>#BK-${b.booking_id}</strong></td>
+                <td><strong>${b.resources?.room_code || '—'}</strong> (${b.resources?.block || '—'})</td>
+                <td>${b.resources?.resource_type || '—'}</td>
+                <td>${dateStr}<br><span style="font-size:12px;color:#6b7280;">${timeStr}</span></td>
+                <td>${b.purpose || '—'}</td>
+                <td><span class="t3-badge ${badgeCls[b.status] || 't3-badge-default'}">${b.status}</span></td>
+                <td>
+                    <button class="btn btn-secondary cancel-btn" data-id="${b.booking_id}" style="padding:4px 8px;font-size:12px;color:#dc2626;">Cancel</button>
+                </td>
+            </tr>
+        `;
+    }).join('');
+
+    tbody.querySelectorAll('.cancel-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const bId = parseInt(btn.dataset.id, 10);
+            if (!confirm(`Are you sure you want to cancel booking #BK-${bId}?`)) return;
+            btn.disabled = true;
+            btn.textContent = 'Cancelling…';
+            const res = await cancelBooking(bId, user.userId);
+            if (res.success) {
+                alert('Booking cancelled successfully.');
+                loadDashboard(user);
+            } else {
+                alert('Failed to cancel: ' + res.message);
+                btn.disabled = false;
+                btn.textContent = 'Cancel';
+            }
+        });
+    });
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Faculty Profile — Booking Portal</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+<link rel="stylesheet" href="../assets/css/t3-styles.css">
+</head>
+<body>
+<div class="container">
+    <aside class="sidebar">
+        <div class="logo">🎓 Faculty Portal</div>
+        <nav class="nav">
+            <a href="dashboard.html">Dashboard</a>
+            <a href="resources.html">Book Resource</a>
+            <a href="history.html">Booking History</a>
+            <a href="concerns.html">My Concerns</a>
+            <a href="profile.html" class="active">Profile</a>
+            <a href="../login.html">Logout</a>
+        </nav>
+    </aside>
+
+    <main class="main">
+        <div class="topbar">
+            <h2>Faculty Profile</h2>
+            <div id="topbar-user">Faculty Member</div>
+        </div>
+
+        <div class="card profile" style="display:flex;gap:24px;align-items:flex-start;padding:28px;">
+            <div class="avatar" style="font-size:54px;background:#eff6ff;width:80px;height:80px;border-radius:50%;display:flex;align-items:center;justify-content:center;">👨‍🏫</div>
+
+            <div style="flex:1;">
+                <h3 id="prof-name" style="margin:0 0 6px 0;font-size:22px;">Loading…</h3>
+                <p id="prof-role" style="margin:0 0 16px 0;color:#2563eb;font-weight:600;font-size:14px;"></p>
+
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:600px;font-size:14px;background:#f9fafb;padding:16px;border-radius:8px;border:1px solid #e5e7eb;">
+                    <div><strong>User ID:</strong></div>
+                    <div id="prof-id">—</div>
+
+                    <div><strong>Email:</strong></div>
+                    <div id="prof-email">—</div>
+
+                    <div><strong>Department:</strong></div>
+                    <div>Information Technology</div>
+
+                    <div><strong>Can Override:</strong></div>
+                    <div id="prof-override">No (Faculty privilege)</div>
+
+                    <div><strong>Last Login:</strong></div>
+                    <div id="prof-last-login">—</div>
+
+                    <div><strong>Account Created:</strong></div>
+                    <div id="prof-created">—</div>
+                </div>
+
+                <div style="margin-top:20px;display:flex;gap:10px;">
+                    <button id="btn-edit-name" class="btn">Update Display Name</button>
+                    <a href="history.html" class="btn btn-secondary">View My Bookings</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Activity Summary Card -->
+        <div class="grid-3" style="margin-top:20px;">
+            <div class="card">
+                <h3>Total Requests</h3>
+                <div id="stat-total" style="font-size:26px;font-weight:bold;"><span class="t3-stat-loading"></span></div>
+            </div>
+            <div class="card">
+                <h3>Approved</h3>
+                <div id="stat-approved" style="font-size:26px;font-weight:bold;color:#16a34a;"><span class="t3-stat-loading"></span></div>
+            </div>
+            <div class="card">
+                <h3>Pending Approval</h3>
+                <div id="stat-pending" style="font-size:26px;font-weight:bold;color:#d97706;"><span class="t3-stat-loading"></span></div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<script src="../assets/js/app.js"></script>
+<script type="module" src="../assets/js/t3-notifications.js"></script>
+<script type="module">
+import { supabase } from '../assets/js/supabase-client.js';
+import { requireAuth, populateTopbar, setSession } from '../assets/js/auth.js';
+
+const session = requireAuth('Faculty');
+if (session) {
+    populateTopbar();
+    loadProfile();
+}
+
+async function loadProfile() {
+    const { data: user, error } = await supabase
+        .from('users')
+        .select('user_id, name, email, last_login_at, created_at, roles(role_name, can_override)')
+        .eq('user_id', session.userId)
+        .single();
+
+    if (error || !user) {
+        document.getElementById('prof-name').textContent = session.name || 'Faculty Member';
+        return;
+    }
+
+    document.getElementById('prof-name').textContent = user.name;
+    document.getElementById('prof-role').textContent = user.roles?.role_name || 'Faculty';
+    document.getElementById('prof-id').textContent   = `#UID-${user.user_id}`;
+    document.getElementById('prof-email').textContent = user.email;
+    document.getElementById('prof-override').textContent = user.roles?.can_override ? 'Yes' : 'No (Standard)';
+    
+    document.getElementById('prof-last-login').textContent = user.last_login_at
+        ? new Date(user.last_login_at).toLocaleString()
+        : 'First session';
+    document.getElementById('prof-created').textContent = user.created_at
+        ? new Date(user.created_at).toLocaleDateString()
+        : '—';
+
+    // Summary stats
+    const { data: bookings } = await supabase
+        .from('bookings')
+        .select('status')
+        .eq('requested_by', session.userId);
+
+    const bks = bookings || [];
+    document.getElementById('stat-total').textContent = bks.length;
+    document.getElementById('stat-approved').textContent = bks.filter(b => b.status === 'APPROVED').length;
+    document.getElementById('stat-pending').textContent = bks.filter(b => b.status === 'PENDING').length;
+
+    // Update name action
+    document.getElementById('btn-edit-name').addEventListener('click', async () => {
+        const newName = prompt('Enter new display name:', user.name);
+        if (!newName || !newName.trim() || newName === user.name) return;
+
+        const { error: updErr } = await supabase
+            .from('users')
+            .update({ name: newName.trim() })
+            .eq('user_id', session.userId);
+
+        if (updErr) {
+            alert('Failed to update name: ' + updErr.message);
+        } else {
+            session.name = newName.trim();
+            setSession(session);
+            populateTopbar();
+            document.getElementById('prof-name').textContent = newName.trim();
+            alert('Display name updated successfully.');
+        }
+    });
+}
+</script>
+</body>
+</html>

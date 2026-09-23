@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Laboratories</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+<link rel="stylesheet" href="../assets/css/t3-styles.css">
+</head>
+<body>
+<div class="container">
+<aside class="sidebar">
+<div class="logo">🛠️ Admin Panel</div>
+<nav class="nav">
+<a href="dashboard.html">Dashboard</a>
+<a href="users.html">Users</a>
+<a href="labs.html" class="active">Laboratories</a>
+<a href="classrooms.html">Classrooms</a>
+<a href="resources.html">Resources</a>
+<a href="conflicts.html">Audit Log</a>
+<a href="reports.html">Reports</a>
+<a href="concerns.html">Concern Management</a>
+<a href="profile.html">Profile</a>
+<a href="../login.html">Logout</a>
+</nav>
+</aside>
+<main class="main">
+<div class="topbar">
+<h2>Laboratories</h2>
+<div id="topbar-user"></div>
+</div>
+
+<div class="card">
+<div class="t3-section-header" style="margin-bottom:14px;">
+    <h3>All Labs <span id="lab-count" style="font-size:13px;color:#6b7280;font-weight:400;"></span></h3>
+</div>
+<div class="t3-table-wrap">
+<table>
+    <thead>
+        <tr><th>Room Code</th><th>Block</th><th>Capacity</th><th>Notes</th><th>Status</th><th>Action</th></tr>
+    </thead>
+    <tbody id="labs-tbody">
+        <tr><td colspan="6"><span class="t3-stat-loading" style="display:block;margin:16px auto;"></span></td></tr>
+    </tbody>
+</table>
+</div>
+</div>
+</main>
+</div>
+
+<script src="../assets/js/app.js"></script>
+<script type="module" src="../assets/js/t3-notifications.js"></script>
+<script type="module">
+import { requireAuth, populateTopbar } from '../assets/js/auth.js';
+import { supabase }                    from '../assets/js/supabase-client.js';
+import { insertAuditLog }              from '../assets/js/booking-engine.js';
+import { CONFIG }                      from '../assets/js/config.js';
+
+const session = requireAuth('Admin');
+populateTopbar();
+
+async function toggleStatus(resourceId, currentStatus) {
+    const newStatus = currentStatus === 'ACTIVE' ? 'UNAVAILABLE' : 'ACTIVE';
+    const { error } = await supabase
+        .from('resources')
+        .update({ status: newStatus })
+        .eq('resource_id', resourceId);
+
+    if (error) { alert('Update failed: ' + error.message); return; }
+
+    await insertAuditLog({
+        eventType: CONFIG.AUDIT.RESOURCE_UPDATED,
+        actorUserId: session.userId,
+        targetEntityType: 'RESOURCE',
+        targetEntityId: resourceId,
+        previousState: currentStatus,
+        newState: newStatus,
+        reason: 'Admin status toggle',
+    });
+
+    loadLabs();
+}
+window.toggleStatus = toggleStatus;
+
+async function loadLabs() {
+    const tbody = document.getElementById('labs-tbody');
+    const { data, error } = await supabase
+        .from('resources')
+        .select('resource_id, room_code, block, capacity, notes, status')
+        .eq('resource_type', 'Lab')
+        .order('room_code');
+
+    if (error) {
+        tbody.innerHTML = `<tr><td colspan="6"><div class="t3-error">${error.message}</div></td></tr>`;
+        return;
+    }
+
+    document.getElementById('lab-count').textContent = `(${data.length})`;
+    tbody.innerHTML = data.map(r => {
+        const isActive = r.status === 'ACTIVE';
+        return `
+        <tr>
+            <td><strong>${r.room_code}</strong></td>
+            <td>${r.block ?? '—'}</td>
+            <td>${r.capacity ?? '<span style="color:#9ca3af;">TBD</span>'}</td>
+            <td style="font-size:13px;color:#6b7280;">${r.notes ?? '—'}</td>
+            <td><span class="status ${isActive ? 'available' : 'booked'}">${r.status}</span></td>
+            <td>
+                <button class="btn ${isActive ? 'btn-secondary' : ''}" style="font-size:12px;padding:6px 12px;"
+                    onclick="toggleStatus(${r.resource_id},'${r.status}')">
+                    ${isActive ? 'Deactivate' : 'Activate'}
+                </button>
+            </td>
+        </tr>`;
+    }).join('');
+}
+
+loadLabs();
+</script>
+</body>
+</html>

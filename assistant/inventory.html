@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lab Inventory & Status — Lab Assistant</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+<link rel="stylesheet" href="../assets/css/t3-styles.css">
+</head>
+<body>
+<div class="container">
+    <aside class="sidebar">
+        <div class="logo">🧪 Lab Assistant</div>
+        <nav class="nav">
+            <a href="dashboard.html">Dashboard</a>
+            <a href="schedule.html">Daily Schedule</a>
+            <a href="requests.html">Maintenance Requests</a>
+            <a href="inventory.html" class="active">Lab Status</a>
+            <a href="profile.html">Profile</a>
+            <a href="../login.html">Logout</a>
+        </nav>
+    </aside>
+
+    <main class="main">
+        <div class="topbar">
+            <h2>Laboratory Facilities & Inventory</h2>
+            <div id="topbar-user">Lab Assistant</div>
+        </div>
+
+        <!-- Labs Status & Availability Table -->
+        <div class="card">
+            <div class="t3-section-header">
+                <h3>🔬 Laboratory Resources & Operational Status</h3>
+                <span style="font-size:12px;color:#6b7280;">Toggle status for emergency maintenance or availability</span>
+            </div>
+
+            <div class="t3-table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Lab Room</th>
+                            <th>Block</th>
+                            <th>Workstations / Capacity</th>
+                            <th>Configuration / Notes</th>
+                            <th>Status</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="labs-tbody">
+                        <tr><td colspan="6"><span class="t3-stat-loading" style="display:block;margin:16px auto;"></span></td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Equipment Inventory Tracking Card -->
+        <div class="card">
+            <div class="t3-section-header">
+                <h3>🖥️ Equipment & Peripherals Inventory</h3>
+                <span style="font-size:12px;color:#6b7280;">Standard hardware deployment across departmental labs</span>
+            </div>
+
+            <div class="t3-table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Equipment Type</th>
+                            <th>Assigned Lab</th>
+                            <th>Total Units</th>
+                            <th>Working</th>
+                            <th>Under Service</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Desktop Workstations (i7, 32GB)</strong></td>
+                            <td>MB 407, MB 408, MB 409</td>
+                            <td>120</td>
+                            <td>116</td>
+                            <td>4</td>
+                            <td><span class="t3-badge t3-badge-approved">Operational</span></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Ceiling Laser Projectors</strong></td>
+                            <td>All Laboratories</td>
+                            <td>8</td>
+                            <td>8</td>
+                            <td>0</td>
+                            <td><span class="t3-badge t3-badge-approved">Operational</span></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Managed Gigabit Switches</strong></td>
+                            <td>Server Rack A & B</td>
+                            <td>12</td>
+                            <td>12</td>
+                            <td>0</td>
+                            <td><span class="t3-badge t3-badge-approved">Operational</span></td>
+                        </tr>
+                        <tr>
+                            <td><strong>VR Headsets & Sensors</strong></td>
+                            <td>MB 409 (Advanced Computing)</td>
+                            <td>10</td>
+                            <td>8</td>
+                            <td>2</td>
+                            <td><span class="t3-badge t3-badge-pending">Partial Service</span></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Digital Whiteboards & Pens</strong></td>
+                            <td>MB 407 & MB 408</td>
+                            <td>4</td>
+                            <td>4</td>
+                            <td>0</td>
+                            <td><span class="t3-badge t3-badge-approved">Operational</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+</div>
+
+<script src="../assets/js/app.js"></script>
+<script type="module" src="../assets/js/t3-notifications.js"></script>
+<script type="module">
+import { supabase } from '../assets/js/supabase-client.js';
+import { requireAuth, populateTopbar } from '../assets/js/auth.js';
+import { insertAuditLog } from '../assets/js/booking-engine.js';
+
+const session = requireAuth('Lab Assistant');
+if (session) {
+    populateTopbar();
+    loadLabs();
+}
+
+async function loadLabs() {
+    const tbody = document.getElementById('labs-tbody');
+    tbody.innerHTML = '<tr><td colspan="6"><span class="t3-stat-loading" style="display:block;margin:16px auto;"></span></td></tr>';
+
+    const { data: labs, error } = await supabase
+        .from('resources')
+        .select('*')
+        .eq('resource_type', 'Lab')
+        .order('room_code');
+
+    if (error) {
+        tbody.innerHTML = `<tr><td colspan="6" style="color:#dc2626;padding:16px;text-align:center;">Failed to load labs: ${error.message}</td></tr>`;
+        return;
+    }
+
+    const rows = labs || [];
+
+    tbody.innerHTML = rows.map(l => {
+        const isActive = l.status === 'ACTIVE';
+        const badgeCls = isActive ? 't3-badge-approved' : 't3-badge-denied';
+        const actionText = isActive ? 'Set Maintenance' : 'Set Active';
+        const actionColor = isActive ? '#d97706' : '#16a34a';
+
+        return `
+            <tr>
+                <td><strong>🔬 ${l.room_code}</strong></td>
+                <td>${l.block || 'Main Building'}</td>
+                <td>${l.capacity ? l.capacity + ' seats' : 'Flexible'}</td>
+                <td style="font-size:13px;color:#4b5563;">${l.notes || 'No special hardware listed'}</td>
+                <td><span class="t3-badge ${badgeCls}">${l.status}</span></td>
+                <td>
+                    <button class="btn btn-secondary toggle-status-btn" 
+                        data-id="${l.resource_id}" 
+                        data-code="${l.room_code}"
+                        data-current="${l.status}"
+                        style="padding:4px 8px;font-size:12px;color:${actionColor};">
+                        ${actionText}
+                    </button>
+                </td>
+            </tr>
+        `;
+    }).join('');
+
+    tbody.querySelectorAll('.toggle-status-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const resId = parseInt(btn.dataset.id, 10);
+            const code  = btn.dataset.code;
+            const current = btn.dataset.current;
+            const targetStatus = current === 'ACTIVE' ? 'MAINTENANCE' : 'ACTIVE';
+
+            if (!confirm(`Change status of ${code} from ${current} to ${targetStatus}?`)) return;
+
+            btn.disabled = true;
+            btn.textContent = 'Updating…';
+
+            const { error: updErr } = await supabase
+                .from('resources')
+                .update({ status: targetStatus })
+                .eq('resource_id', resId);
+
+            if (updErr) {
+                alert('Update failed: ' + updErr.message);
+                btn.disabled = false;
+            } else {
+                // Write audit log
+                await insertAuditLog({
+                    eventType: 'RESOURCE_UPDATED',
+                    actorUserId: session.userId,
+                    targetEntityType: 'RESOURCE',
+                    targetEntityId: resId,
+                    resourceId: resId,
+                    previousState: current,
+                    newState: targetStatus,
+                    reason: `Lab status changed to ${targetStatus} by lab assistant`
+                });
+
+                alert(`${code} is now marked as ${targetStatus}.`);
+                loadLabs();
+            }
+        });
+    });
+}
+</script>
+</body>
+</html>

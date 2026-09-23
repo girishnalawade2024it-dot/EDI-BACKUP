@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Audit Log</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+<!-- Team 3: scoped styles -->
+<link rel="stylesheet" href="../assets/css/t3-styles.css">
+</head>
+<body>
+
+<div class="container">
+
+<aside class="sidebar">
+<div class="logo">🛠️ Admin Panel</div>
+
+<nav class="nav">
+<a href="dashboard.html">Dashboard</a>
+<a href="users.html">Users</a>
+<a href="labs.html">Laboratories</a>
+<a href="classrooms.html">Classrooms</a>
+<a href="resources.html">Resources</a>
+<a href="conflicts.html" class="active">Audit Log</a>
+<a href="reports.html">Reports</a>
+<a href="concerns.html">Concern Management</a>
+<a href="profile.html">Profile</a>
+<a href="../login.html">Logout</a>
+</nav>
+</aside>
+
+<main class="main">
+
+<div class="topbar">
+<h2>Audit Log</h2>
+<!-- t3-notifications.js injects bell here -->
+<div>Administrator</div>
+</div>
+
+<!-- ── Filters ── -->
+<div class="t3-filter-bar">
+    <div class="t3-filter-group">
+        <label for="t3-al-from">Date From</label>
+        <input type="date" id="t3-al-from">
+    </div>
+    <div class="t3-filter-group">
+        <label for="t3-al-to">Date To</label>
+        <input type="date" id="t3-al-to">
+    </div>
+    <div class="t3-filter-group">
+        <label for="t3-al-user">Actor (User)</label>
+        <select id="t3-al-user">
+            <option value="">All Users</option>
+            <!-- populated dynamically by t3-auditlog.js -->
+        </select>
+    </div>
+    <div class="t3-filter-group">
+        <label for="t3-al-event">Event Type</label>
+        <select id="t3-al-event">
+            <option value="">All Events</option>
+            <!-- populated dynamically by t3-auditlog.js -->
+        </select>
+    </div>
+    <div class="t3-filter-actions">
+        <button class="btn" id="t3-al-apply">Apply</button>
+        <button class="btn btn-secondary" id="t3-al-reset">Reset</button>
+        <button class="t3-export-btn" id="t3-al-export">⬇ Export CSV</button>
+    </div>
+</div>
+
+<!-- ── Audit Log Table ── -->
+<div class="card">
+<div class="t3-section-header">
+    <h3>System Event History</h3>
+    <span style="font-size:13px;color:#6b7280;">Append-only — no events are ever edited or deleted</span>
+</div>
+
+<div class="t3-table-wrap">
+<table>
+    <thead>
+        <tr>
+            <th>Timestamp</th>
+            <th>Actor</th>
+            <th>Event</th>
+            <th>Target</th>
+            <th>State Change</th>
+            <th>Reason</th>
+        </tr>
+    </thead>
+    <tbody id="t3-al-tbody">
+        <tr>
+            <td colspan="6">
+                <span class="t3-stat-loading" style="display:block;margin:16px auto;"></span>
+            </td>
+        </tr>
+    </tbody>
+</table>
+</div>
+
+<!-- Load more button (shown/hidden by t3-auditlog.js) -->
+<button class="t3-load-more" id="t3-al-more" style="display:none;">
+    Load more events ↓
+</button>
+
+</div>
+
+</main>
+</div>
+
+<script src="../assets/js/app.js"></script>
+<!-- Team 3 modules -->
+<script type="module" src="../assets/js/t3-notifications.js"></script>
+<script type="module" src="../assets/js/t3-auditlog.js"></script>
+<script type="module">
+import { requireAuth, populateTopbar } from '../assets/js/auth.js';
+requireAuth('Admin');
+populateTopbar();
+</script>
+</body>
+</html>
