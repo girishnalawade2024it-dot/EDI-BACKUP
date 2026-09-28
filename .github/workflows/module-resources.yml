@@ -1,0 +1,48 @@
+# Module: Resources
+# Rooms, labs, classrooms, time slots, live availability
+# Runs only when this module's files (or shared backend files) change.
+name: "Module: Resources"
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "backend/api/resources.py"
+      - "backend/api/slots.py"
+      - "tests/modules/test_resources.py"
+      - "backend/main.py"
+      - "backend/database/**"
+      - "requirements*.txt"
+      - "pytest.ini"
+      - "tests/modules/conftest.py"
+      - "tests/modules/helpers.py"
+      - ".github/workflows/_module-tests.yml"
+      - ".github/workflows/module-resources.yml"
+  pull_request:
+    paths:
+      - "backend/api/resources.py"
+      - "backend/api/slots.py"
+      - "tests/modules/test_resources.py"
+      - "backend/main.py"
+      - "backend/database/**"
+      - "requirements*.txt"
+      - "pytest.ini"
+      - "tests/modules/conftest.py"
+      - "tests/modules/helpers.py"
+      - ".github/workflows/_module-tests.yml"
+      - ".github/workflows/module-resources.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: module-resources-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    uses: ./.github/workflows/_module-tests.yml
+    with:
+      module: Resources
+      tests: tests/modules/test_resources.py

@@ -170,6 +170,49 @@ database is in use.
 
 ---
 
+## Automation (GitHub Actions)
+
+Workflows live in `.github/workflows/` and start working as soon as the code is
+pushed. Each backend module has its own workflow that runs only when that
+module's files change, plus one full CI run on every push and pull request.
+
+| Workflow | Runs when | What it does |
+|---|---|---|
+| `ci.yml` | every push to `main`, every PR | All tests on Python 3.11 / 3.12 / 3.13, and checks the server boots |
+| `module-auth.yml` | `backend/api/auth.py` changes | `tests/modules/test_auth.py` |
+| `module-resources.yml` | resources / slots API | `tests/modules/test_resources.py` |
+| `module-bookings.yml` | bookings API, booking service, mutex | `test_bookings.py` + `tests/test_backend.py` |
+| `module-approvals.yml` | approvals API / service | `tests/modules/test_approvals.py` |
+| `module-notifications.yml` | notifications API / service | `tests/modules/test_notifications.py` |
+| `module-audit.yml` | audit API / service | `tests/modules/test_audit.py` |
+| `module-reports.yml` | reports API / service | `tests/modules/test_reports.py` |
+| `module-admin.yml` | admin API | `tests/modules/test_admin.py` |
+| `module-booking-logic.yml` | `booking_logic.py`, `api/logic.py` | `tests/modules/test_booking_logic.py` |
+| `module-database.yml` | `backend/database/**` | `tests/modules/test_database.py` |
+| `module-frontend.yml` | `admin/`, `faculty/`, `assistant/`, `assets/`, `*.html` | JS syntax check; every page per role loads and every local link resolves |
+| `module-supabase.yml` | `supabase/**` | Applies all migrations to a throwaway Postgres; manual run with `deploy: true` pushes them to Supabase |
+| `scheduled-jobs.yml` | every 30 min, college hours | Calls `/api/logic/expire` and `/api/logic/notifications/process` on the deployed backend |
+
+All module workflows share `_module-tests.yml`. Any change to a shared file
+(`backend/main.py`, `backend/database/**`, `requirements*.txt`) runs every
+backend module workflow.
+
+**Optional secrets** (Settings → Secrets and variables → Actions):
+
+| Secret | Used by |
+|---|---|
+| `BACKEND_URL` | `scheduled-jobs.yml`. Without it the job skips |
+| `SUPABASE_ACCESS_TOKEN`, `SUPABASE_DB_PASSWORD`, `SUPABASE_PROJECT_REF` | `module-supabase.yml` deploy job. Also create a `production` environment so each deploy needs approval |
+
+Run the same checks locally:
+
+```bash
+pip install -r requirements-dev.txt
+python -m pytest                       # everything
+python -m pytest tests/modules/test_bookings.py   # one module
+python scripts/check_frontend.py       # frontend pages
+```
+
 ## Known gaps
 
 - **No password verification.** `login()` matches on email alone. Move to
@@ -191,4 +234,3 @@ database is in use.
   `user_id: 4` to both Sneha Joshi and Rahul Verma. Affects the offline
   fallback only.
 - **Write permissions are wide open** to the anon role on `bookings`.
-- No automated tests.

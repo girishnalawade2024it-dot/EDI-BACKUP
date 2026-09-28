@@ -1,0 +1,48 @@
+# Module: Notifications
+# In-app notifications and read state
+# Runs only when this module's files (or shared backend files) change.
+name: "Module: Notifications"
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "backend/api/notifications.py"
+      - "backend/services/notification_service.py"
+      - "tests/modules/test_notifications.py"
+      - "backend/main.py"
+      - "backend/database/**"
+      - "requirements*.txt"
+      - "pytest.ini"
+      - "tests/modules/conftest.py"
+      - "tests/modules/helpers.py"
+      - ".github/workflows/_module-tests.yml"
+      - ".github/workflows/module-notifications.yml"
+  pull_request:
+    paths:
+      - "backend/api/notifications.py"
+      - "backend/services/notification_service.py"
+      - "tests/modules/test_notifications.py"
+      - "backend/main.py"
+      - "backend/database/**"
+      - "requirements*.txt"
+      - "pytest.ini"
+      - "tests/modules/conftest.py"
+      - "tests/modules/helpers.py"
+      - ".github/workflows/_module-tests.yml"
+      - ".github/workflows/module-notifications.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: module-notifications-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    uses: ./.github/workflows/_module-tests.yml
+    with:
+      module: Notifications
+      tests: tests/modules/test_notifications.py

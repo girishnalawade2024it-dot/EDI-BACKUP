@@ -1,0 +1,6 @@
+# Runtime dependencies for the Python FastAPI backend
+fastapi==0.115.6
+starlette==0.41.3
+uvicorn==0.34.0
+pydantic==2.13.5
+python-dotenv==1.0.1

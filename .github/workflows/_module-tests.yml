@@ -1,0 +1,74 @@
+# Reusable workflow: installs the backend and runs one module's test file.
+# Called by every module-*.yml workflow in this folder.
+name: Module tests (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      module:
+        description: Display name of the module
+        required: true
+        type: string
+      tests:
+        description: Test file(s) to run, relative to the repo root
+        required: true
+        type: string
+      python-version:
+        required: false
+        type: string
+        default: "3.12"
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: ${{ inputs.module }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ inputs.python-version }}
+          cache: pip
+          cache-dependency-path: requirements*.txt
+
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+
+      - name: Byte-compile backend (syntax check)
+        run: python -m compileall -q backend
+
+      - name: Run ${{ inputs.module }} tests
+        run: |
+          mkdir -p test-results
+          python -m pytest ${{ inputs.tests }} -v --junitxml=test-results/results.xml
+
+      - name: Job summary
+        if: always()
+        run: |
+          python - <<'PY'
+          import os, xml.etree.ElementTree as ET
+          path = "test-results/results.xml"
+          lines = [f"### ${{ inputs.module }}"]
+          if os.path.exists(path):
+              s = ET.parse(path).getroot()
+              s = s if s.tag == "testsuite" else s.find("testsuite")
+              total, fail, err, skip = (int(s.get(k, 0)) for k in ("tests", "failures", "errors", "skipped"))
+              lines.append(f"| Total | Passed | Failed | Errors | Skipped |\n|---|---|---|---|---|\n"
+                           f"| {total} | {total - fail - err - skip} | {fail} | {err} | {skip} |")
+          else:
+              lines.append("No test results were produced.")
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as f:
+              f.write("\n".join(lines) + "\n")
+          PY
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ inputs.module }}
+          path: test-results/
+          retention-days: 14

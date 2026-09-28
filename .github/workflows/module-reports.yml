@@ -1,0 +1,48 @@
+# Module: Reports
+# Utilisation, peak load, conflicts, TAT, CSV exports
+# Runs only when this module's files (or shared backend files) change.
+name: "Module: Reports"
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "backend/api/reports.py"
+      - "backend/services/report_service.py"
+      - "tests/modules/test_reports.py"
+      - "backend/main.py"
+      - "backend/database/**"
+      - "requirements*.txt"
+      - "pytest.ini"
+      - "tests/modules/conftest.py"
+      - "tests/modules/helpers.py"
+      - ".github/workflows/_module-tests.yml"
+      - ".github/workflows/module-reports.yml"
+  pull_request:
+    paths:
+      - "backend/api/reports.py"
+      - "backend/services/report_service.py"
+      - "tests/modules/test_reports.py"
+      - "backend/main.py"
+      - "backend/database/**"
+      - "requirements*.txt"
+      - "pytest.ini"
+      - "tests/modules/conftest.py"
+      - "tests/modules/helpers.py"
+      - ".github/workflows/_module-tests.yml"
+      - ".github/workflows/module-reports.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: module-reports-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    uses: ./.github/workflows/_module-tests.yml
+    with:
+      module: Reports
+      tests: tests/modules/test_reports.py

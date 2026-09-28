@@ -1,0 +1,103 @@
+# Module: Supabase database migrations
+# 1. validate - applies every migration in order to a throwaway Postgres 15
+#               (with the anon / authenticated roles Supabase provides)
+# 2. deploy   - manual only: pushes migrations to the live Supabase project.
+#               Needs repo secrets SUPABASE_ACCESS_TOKEN, SUPABASE_DB_PASSWORD, SUPABASE_PROJECT_REF
+#               and a "production" environment (Settings -> Environments) as an approval gate.
+name: "Module: Supabase Migrations"
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "supabase/**"
+      - ".github/workflows/module-supabase.yml"
+  pull_request:
+    paths:
+      - "supabase/**"
+      - ".github/workflows/module-supabase.yml"
+  workflow_dispatch:
+    inputs:
+      deploy:
+        description: "Push migrations to the live Supabase project after validation"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: module-supabase-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    name: Apply migrations to Postgres
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: rbs
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: localhost
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: rbs
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create Supabase roles
+        run: |
+          psql -v ON_ERROR_STOP=1 -c "CREATE ROLE anon NOLOGIN;"
+          psql -v ON_ERROR_STOP=1 -c "CREATE ROLE authenticated NOLOGIN;"
+          psql -v ON_ERROR_STOP=1 -c "CREATE ROLE service_role NOLOGIN BYPASSRLS;"
+          psql -v ON_ERROR_STOP=1 -c "GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;"
+          psql -v ON_ERROR_STOP=1 -c "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO anon, authenticated, service_role;"
+
+      - name: Apply migrations in order
+        run: |
+          for f in $(ls supabase/migrations/*.sql | sort); do
+            echo "::group::$f"
+            psql -v ON_ERROR_STOP=1 -f "$f"
+            echo "::endgroup::"
+          done
+
+      - name: Verify constraints and seed data
+        run: |
+          psql -v ON_ERROR_STOP=1 -c "SELECT conname, pg_get_constraintdef(oid) FROM pg_constraint WHERE conrelid = 'bookings'::regclass;"
+          count=$(psql -tA -c "SELECT COUNT(*) FROM resources;")
+          echo "resources: $count"
+          if [ "$count" -eq 0 ]; then
+            echo "::error::resources table is empty after migrations"
+            exit 1
+          fi
+
+  deploy:
+    name: Push migrations to Supabase
+    needs: validate
+    if: github.event_name == 'workflow_dispatch' && inputs.deploy
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 10
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+      SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Link project
+        run: supabase link --project-ref "$SUPABASE_PROJECT_REF" --password "$SUPABASE_DB_PASSWORD"
+      - name: Push migrations
+        run: supabase db push --password "$SUPABASE_DB_PASSWORD"

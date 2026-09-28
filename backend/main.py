@@ -17,6 +17,7 @@ from backend.api import (
     audit_logs,
     auth,
     bookings,
+    logic,
     notifications,
     reports,
     resources,
@@ -65,6 +66,7 @@ app.include_router(reports.router)
 app.include_router(audit_logs.router)
 app.include_router(notifications.router)
 app.include_router(admin.router)
+app.include_router(logic.router)
 
 
 @app.get("/api/health", tags=["Health"])

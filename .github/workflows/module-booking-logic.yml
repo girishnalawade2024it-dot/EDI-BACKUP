@@ -1,0 +1,48 @@
+# Module: Booking Logic
+# Interval overlap, priority queue, notification queue, modify, auto-release
+# Runs only when this module's files (or shared backend files) change.
+name: "Module: Booking Logic"
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "backend/api/logic.py"
+      - "backend/services/booking_logic.py"
+      - "tests/modules/test_booking_logic.py"
+      - "backend/main.py"
+      - "backend/database/**"
+      - "requirements*.txt"
+      - "pytest.ini"
+      - "tests/modules/conftest.py"
+      - "tests/modules/helpers.py"
+      - ".github/workflows/_module-tests.yml"
+      - ".github/workflows/module-booking-logic.yml"
+  pull_request:
+    paths:
+      - "backend/api/logic.py"
+      - "backend/services/booking_logic.py"
+      - "tests/modules/test_booking_logic.py"
+      - "backend/main.py"
+      - "backend/database/**"
+      - "requirements*.txt"
+      - "pytest.ini"
+      - "tests/modules/conftest.py"
+      - "tests/modules/helpers.py"
+      - ".github/workflows/_module-tests.yml"
+      - ".github/workflows/module-booking-logic.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: module-booking-logic-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    uses: ./.github/workflows/_module-tests.yml
+    with:
+      module: Booking Logic
+      tests: tests/modules/test_booking_logic.py

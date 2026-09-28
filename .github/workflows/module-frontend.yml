@@ -1,0 +1,85 @@
+# Module: Frontend (Admin / Faculty / Lab Assistant pages + shared assets)
+# - JS syntax check of every file in assets/js (ES modules)
+# - Per-role page check: every local link resolves and every page is served with HTTP 200
+name: "Module: Frontend"
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "admin/**"
+      - "faculty/**"
+      - "assistant/**"
+      - "assets/**"
+      - "*.html"
+      - "backend/main.py"
+      - "scripts/check_frontend.py"
+      - ".github/workflows/module-frontend.yml"
+  pull_request:
+    paths:
+      - "admin/**"
+      - "faculty/**"
+      - "assistant/**"
+      - "assets/**"
+      - "*.html"
+      - "backend/main.py"
+      - "scripts/check_frontend.py"
+      - ".github/workflows/module-frontend.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: module-frontend-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  js-syntax:
+    name: JS syntax (assets/js)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: node --check every module
+        run: |
+          # Files use import/export, so check them as ES modules (.mjs copies)
+          mkdir -p /tmp/jscheck
+          status=0
+          for f in assets/js/*.js; do
+            copy="/tmp/jscheck/$(basename "$f" .js).mjs"
+            cp "$f" "$copy"
+            if node --check "$copy"; then
+              echo "ok  $f"
+            else
+              echo "::error file=$f::JavaScript syntax error"
+              status=1
+            fi
+          done
+          exit $status
+
+  pages:
+    name: Pages (${{ matrix.label }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { folder: admin, label: Admin }
+          - { folder: faculty, label: Faculty }
+          - { folder: assistant, label: Lab Assistant }
+          - { folder: ".", label: Login and Landing }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements*.txt
+      - run: pip install -r requirements-dev.txt
+      - name: Check ${{ matrix.label }} pages
+        run: python scripts/check_frontend.py "${{ matrix.folder }}"

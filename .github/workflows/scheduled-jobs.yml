@@ -1,0 +1,38 @@
+# Scheduled backend jobs (booking_logic module).
+# Calls the deployed backend every 30 minutes during college hours to:
+#   - auto-release stale bookings     POST /api/logic/expire
+#   - deliver / retry notifications   POST /api/logic/notifications/process
+# Set the repo secret BACKEND_URL (e.g. https://your-backend.example.com) to enable it.
+# Without the secret the job skips cleanly. Cron times are UTC.
+name: Scheduled Jobs
+
+on:
+  schedule:
+    - cron: "*/30 2-13 * * 1-6"   # every 30 min, 07:30-19:00 IST, Mon-Sat
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: scheduled-jobs
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      BACKEND_URL: ${{ secrets.BACKEND_URL }}
+    steps:
+      - name: Skip when no backend is deployed
+        if: env.BACKEND_URL == ''
+        run: echo "::notice::BACKEND_URL secret not set - skipping scheduled jobs."
+
+      - name: Auto-release stale bookings
+        if: env.BACKEND_URL != ''
+        run: curl -fsS --retry 3 --retry-delay 10 -X POST "${BACKEND_URL%/}/api/logic/expire"
+
+      - name: Process notification queue
+        if: env.BACKEND_URL != ''
+        run: curl -fsS --retry 3 --retry-delay 10 -X POST "${BACKEND_URL%/}/api/logic/notifications/process"

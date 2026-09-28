@@ -1,0 +1,52 @@
+# Module: Bookings
+# Booking engine: validation, conflicts, FCFS, mutex, recurring, cancel
+# Runs only when this module's files (or shared backend files) change.
+name: "Module: Bookings"
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "backend/api/bookings.py"
+      - "backend/services/booking_service.py"
+      - "backend/services/concurrency.py"
+      - "tests/modules/test_bookings.py"
+      - "tests/test_backend.py"
+      - "backend/main.py"
+      - "backend/database/**"
+      - "requirements*.txt"
+      - "pytest.ini"
+      - "tests/modules/conftest.py"
+      - "tests/modules/helpers.py"
+      - ".github/workflows/_module-tests.yml"
+      - ".github/workflows/module-bookings.yml"
+  pull_request:
+    paths:
+      - "backend/api/bookings.py"
+      - "backend/services/booking_service.py"
+      - "backend/services/concurrency.py"
+      - "tests/modules/test_bookings.py"
+      - "tests/test_backend.py"
+      - "backend/main.py"
+      - "backend/database/**"
+      - "requirements*.txt"
+      - "pytest.ini"
+      - "tests/modules/conftest.py"
+      - "tests/modules/helpers.py"
+      - ".github/workflows/_module-tests.yml"
+      - ".github/workflows/module-bookings.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: module-bookings-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    uses: ./.github/workflows/_module-tests.yml
+    with:
+      module: Bookings
+      tests: tests/modules/test_bookings.py tests/test_backend.py

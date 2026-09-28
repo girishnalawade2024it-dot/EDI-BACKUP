@@ -1,0 +1,46 @@
+# Module: Auth
+# Login, sessions, role-based dashboard routing
+# Runs only when this module's files (or shared backend files) change.
+name: "Module: Auth"
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "backend/api/auth.py"
+      - "tests/modules/test_auth.py"
+      - "backend/main.py"
+      - "backend/database/**"
+      - "requirements*.txt"
+      - "pytest.ini"
+      - "tests/modules/conftest.py"
+      - "tests/modules/helpers.py"
+      - ".github/workflows/_module-tests.yml"
+      - ".github/workflows/module-auth.yml"
+  pull_request:
+    paths:
+      - "backend/api/auth.py"
+      - "tests/modules/test_auth.py"
+      - "backend/main.py"
+      - "backend/database/**"
+      - "requirements*.txt"
+      - "pytest.ini"
+      - "tests/modules/conftest.py"
+      - "tests/modules/helpers.py"
+      - ".github/workflows/_module-tests.yml"
+      - ".github/workflows/module-auth.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: module-auth-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    uses: ./.github/workflows/_module-tests.yml
+    with:
+      module: Auth
+      tests: tests/modules/test_auth.py

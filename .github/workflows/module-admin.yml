@@ -1,0 +1,46 @@
+# Module: Admin
+# Dashboard stats and user management
+# Runs only when this module's files (or shared backend files) change.
+name: "Module: Admin"
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "backend/api/admin.py"
+      - "tests/modules/test_admin.py"
+      - "backend/main.py"
+      - "backend/database/**"
+      - "requirements*.txt"
+      - "pytest.ini"
+      - "tests/modules/conftest.py"
+      - "tests/modules/helpers.py"
+      - ".github/workflows/_module-tests.yml"
+      - ".github/workflows/module-admin.yml"
+  pull_request:
+    paths:
+      - "backend/api/admin.py"
+      - "tests/modules/test_admin.py"
+      - "backend/main.py"
+      - "backend/database/**"
+      - "requirements*.txt"
+      - "pytest.ini"
+      - "tests/modules/conftest.py"
+      - "tests/modules/helpers.py"
+      - ".github/workflows/_module-tests.yml"
+      - ".github/workflows/module-admin.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: module-admin-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    uses: ./.github/workflows/_module-tests.yml
+    with:
+      module: Admin
+      tests: tests/modules/test_admin.py
