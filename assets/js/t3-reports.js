@@ -632,6 +632,9 @@ function exportInsightfulLabCSV() {
 let groqAnalysisResult = null;
 let groqModelUsed = '';
 
+// Pre-configured default Groq LLM model
+const DEFAULT_GROQ_MODEL = 'openai/gpt-oss-120b';
+
 const ACTIVE_CHAT_MODELS = [
     'openai/gpt-oss-120b',
     'openai/gpt-oss-20b',
@@ -725,33 +728,35 @@ async function fetchGroqInsights(apiKey, model) {
 
     const targetModel = model || 'openai/gpt-oss-120b';
 
-    // Tier 1: Attempt backend proxy endpoint (includes server-side retry across available models)
-    try {
-        const backendResp = await fetch('/api/reports/groq-insights', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                api_key: apiKey ? apiKey.trim() : undefined,
-                model: targetModel,
-                dataset: metricsPayload
-            })
-        });
+    // Tier 1: Attempt backend proxy endpoint (local relative, then port 8000)
+    for (const endpoint of ['/api/reports/groq-insights', 'http://127.0.0.1:8000/api/reports/groq-insights']) {
+        try {
+            const backendResp = await fetch(endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    api_key: apiKey ? apiKey.trim() : (undefined),
+                    model: targetModel,
+                    dataset: metricsPayload
+                })
+            });
 
-        if (backendResp.ok) {
-            const data = await backendResp.json();
-            if (data.success && data.insights) {
-                groqModelUsed = data.model_used || targetModel;
-                return { insights: data.insights, model: groqModelUsed };
+            if (backendResp.ok) {
+                const data = await backendResp.json();
+                if (data.success && data.insights) {
+                    groqModelUsed = `${data.model_used || targetModel} (Groq Cloud)`;
+                    return { insights: data.insights, model: groqModelUsed };
+                }
             }
+        } catch (_) {
+            // Try next endpoint or fall through to Tier 2
         }
-    } catch (_) {
-        // Backend not available or route unreachable, continue to Tier 2
     }
 
     // Tier 2: Direct client-side call to Groq API with automatic model retry
     const cleanKey = (apiKey || '').trim().replace(/^Bearer\s+/i, '').replace(/^['"]|['"]$/g, '');
     if (!cleanKey) {
-        throw new Error('Please enter a valid Groq API key.');
+        throw new Error('No Groq API key available.');
     }
 
     const systemPrompt = `You are a Senior Higher-Education Campus Resource Auditor and Operations Analyst.
@@ -1479,16 +1484,19 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 // Check if a valid Groq API key and model are configured
                 let apiKey = localStorage.getItem('edi_groq_api_key');
-                let targetModel = 'openai/gpt-oss-120b';
+                let targetModel = localStorage.getItem('edi_groq_model') || DEFAULT_GROQ_MODEL;
 
-                try {
-                    const res = await fetch('/api/reports/groq-config');
-                    if (res.ok) {
-                        const cfg = await res.json();
-                        if (cfg?.groq_api_key) apiKey = cfg.groq_api_key;
-                        if (cfg?.groq_model) targetModel = cfg.groq_model;
-                    }
-                } catch (_) {}
+                for (const cfgUrl of ['/api/reports/groq-config', 'http://127.0.0.1:8000/api/reports/groq-config']) {
+                    try {
+                        const res = await fetch(cfgUrl);
+                        if (res.ok) {
+                            const cfg = await res.json();
+                            if (cfg?.groq_api_key) apiKey = cfg.groq_api_key;
+                            if (cfg?.groq_model) targetModel = cfg.groq_model;
+                            break;
+                        }
+                    } catch (_) {}
+                }
 
                 if (apiKey && apiKey.trim().length > 10) {
                     try {
