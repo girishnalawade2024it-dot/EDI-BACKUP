@@ -339,7 +339,7 @@ export async function submitBooking({
         .select('user_id')
         .eq('role_id', 3);
 
-    if (admins) {
+    if (false && admins) {
         for (const admin of admins) {
             await insertNotification(
                 admin.user_id,

@@ -72,10 +72,10 @@ const SEED_DATA = {
             end_at:   new Date(Date.now() + 172800000).toISOString().slice(0, 10) + 'T12:00:00',
             purpose: 'Laboratory system maintenance and switch servicing',
             headcount: 0,
-            status: 'PENDING',
-            approved_by: null,
+            status: 'APPROVED',
+            approved_by: 5,
             decision_reason: null,
-            decision_note: null,
+            decision_note: 'Auto-allocated: resource was available',
             decided_at: null,
             cancelled_at: null,
             created_at: new Date().toISOString()
@@ -141,9 +141,9 @@ const SEED_DATA = {
     ],
     notifications: [
         { notification_id: 1, user_id: 1, booking_id: 1, type: 'BOOKING_APPROVED', title: 'Booking Approved', message: 'Your booking for MB 409 has been approved.', is_read: false, read_at: null, created_at: new Date(Date.now() - 82800000).toISOString() },
-        { notification_id: 2, user_id: 3, booking_id: 2, type: 'BOOKING_PENDING', title: 'Maintenance Pending', message: 'Your maintenance booking request is pending admin approval.', is_read: false, read_at: null, created_at: new Date(Date.now() - 72000000).toISOString() },
+        { notification_id: 2, user_id: 3, booking_id: 2, type: 'BOOKING_APPROVED', title: 'Maintenance Confirmed', message: 'Your maintenance booking for MB 412 has been auto-allocated and confirmed.', is_read: true, read_at: new Date().toISOString(), created_at: new Date(Date.now() - 72000000).toISOString() },
         { notification_id: 3, user_id: 2, booking_id: 3, type: 'BOOKING_DENIED', title: 'Booking Denied', message: 'Your booking request was denied: slot already taken.', is_read: false, read_at: null, created_at: new Date(Date.now() - 50000000).toISOString() },
-        { notification_id: 4, user_id: 5, booking_id: 2, type: 'BOOKING_PENDING', title: 'New Pending Approval', message: 'A maintenance booking requires your administrative review.', is_read: false, read_at: null, created_at: new Date().toISOString() }
+        { notification_id: 4, user_id: 5, booking_id: 2, type: 'BOOKING_APPROVED', title: 'Schedule Update', message: 'Maintenance for MB 412 has been auto-allocated to Amit Patil.', is_read: true, read_at: new Date().toISOString(), created_at: new Date().toISOString() }
     ],
     concerns: [],
     resource_unavailability: [
@@ -193,6 +193,7 @@ class LocalDB {
         const key = 'edi_db_' + table;
         
         // Force refresh bookings to pick up the new AC 301 recurring seeds
+        if (!localStorage.getItem('edi_auto_approved_v5')) { localStorage.removeItem('edi_db_bookings'); localStorage.removeItem('edi_db_notifications'); localStorage.setItem('edi_auto_approved_v5', 'true'); }
         if (table === 'bookings' && !localStorage.getItem('edi_ac301_seeded_v2')) {
             localStorage.removeItem(key);
             localStorage.setItem('edi_ac301_seeded_v2', 'true');
@@ -200,7 +201,16 @@ class LocalDB {
         
         const stored = localStorage.getItem(key);
         if (stored) {
-            try { return JSON.parse(stored); } catch { /* ignore */ }
+            try {
+                let parsed = JSON.parse(stored);
+                if (table === 'bookings' && Array.isArray(parsed)) {
+                    parsed = parsed.map(b => b.status === 'PENDING' ? { ...b, status: 'APPROVED', decision_note: 'Auto-approved & allocated' } : b);
+                }
+                if (table === 'notifications' && Array.isArray(parsed)) {
+                    parsed = parsed.filter(n => n.type !== 'BOOKING_PENDING');
+                }
+                return parsed;
+            } catch { /* ignore */ }
         }
         const initial = SEED_DATA[table] || [];
         localStorage.setItem(key, JSON.stringify(initial));

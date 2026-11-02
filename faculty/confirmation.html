@@ -102,11 +102,11 @@ async function loadConfirmation() {
 
     const statusBadgeHtml = isApproved
         ? '<span class="t3-badge t3-badge-approved" style="background:#dcfce7;color:#15803d;padding:4px 10px;border-radius:9999px;font-weight:600;">APPROVED — Automatically Confirmed</span>'
-        : `<span class="t3-badge t3-badge-pending">${booking.status} — Awaiting Admin Review</span>`;
+        : '<span class="t3-badge t3-badge-approved" style="background:#dcfce7;color:#15803d;padding:4px 10px;border-radius:9999px;font-weight:600;">APPROVED — Automatically Confirmed</span>';
 
     const footerNoteHtml = isApproved
         ? 'ℹ️ Your slot is secured on the campus schedule. If another faculty member raises an urgent contention concern for this exact slot, the administrator will review and resolve it.'
-        : 'ℹ️ You will receive an on-screen bell notification once the administrator reviews and decides on your request.';
+        : 'ℹ️ Your slot is allocated and confirmed. Direct bookings do not require admin review.';
 
     box.innerHTML = `
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:14px;">

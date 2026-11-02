@@ -24,8 +24,8 @@ export async function loadApprovalQueue(containerId = 't3-approval-list', countI
             resources ( room_code, resource_type, block ),
             users!bookings_requested_by_fkey ( name, email )
         `)
-        .eq('status', CONFIG.STATUS.PENDING)
-        .order('created_at', { ascending: true });
+        .in('status', ['APPROVED', 'PENDING'])
+        .order('created_at', { ascending: false }).limit(8);
 
     if (error) {
         container.innerHTML = `<div class="t3-error">Error loading queue: ${error.message}</div>`;
@@ -33,7 +33,7 @@ export async function loadApprovalQueue(containerId = 't3-approval-list', countI
     }
 
     const rows = data || [];
-    if (countEl) countEl.textContent = `${rows.length} pending`;
+    if (countEl) countEl.textContent = `${rows.length} active allocations`;
 
     if (rows.length === 0) {
         container.innerHTML = '<div class="t3-empty" style="padding:18px;text-align:center;color:#6b7280;font-size:13px;">✅ <strong>No pending bookings:</strong> Available slots are booked and allocated automatically. Only contention concerns and disputes require Admin review.</div>';
@@ -45,7 +45,7 @@ export async function loadApprovalQueue(containerId = 't3-approval-list', countI
             <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;">
                 <div>
                     <strong>#${bk.booking_id}</strong> &nbsp;
-                    <span class="t3-badge t3-badge-pending">PENDING</span> &nbsp;
+                    <span class="t3-badge t3-badge-approved" style="background:#dcfce7;color:#15803d;padding:2px 8px;border-radius:9999px;font-size:11px;font-weight:600;">✓ CONFIRMED (AUTO-ALLOCATED)</span> &nbsp;
                     <span style="font-size:12px;color:#6b7280;">${bk.booking_type}</span>
                 </div>
                 <span style="font-size:11px;color:#9ca3af;">Submitted: ${fmtDateTime(bk.created_at)}</span>
@@ -59,12 +59,12 @@ export async function loadApprovalQueue(containerId = 't3-approval-list', countI
                 ${bk.headcount ? `<div><strong>Headcount:</strong> ${bk.headcount}</div>` : ''}
             </div>
             <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px;">
-                <button class="btn" style="padding:8px 16px;font-size:13px;" onclick="handleApprove(${bk.booking_id})">✓ Approve</button>
-                <select id="deny-reason-${bk.booking_id}" style="padding:8px 12px;border:1px solid #d1d5db;border-radius:10px;font-size:13px;">
-                    ${CONFIG.DENIAL_REASONS.map(r => `<option value="${r.value}">${r.label}</option>`).join('')}
-                </select>
-                <button class="btn btn-secondary" style="padding:8px 16px;font-size:13px;background:#fee2e2;color:#991b1b;" onclick="handleDeny(${bk.booking_id})">✗ Deny</button>
-                ${bk.status === CONFIG.STATUS.APPROVED ? `<button class="btn btn-secondary" style="font-size:13px;" onclick="handlePreempt(${bk.booking_id})">⚡ Preempt</button>` : ''}
+                <span style="font-size:12px;color:#16a34a;font-weight:600;">🟢 Auto-Allocated (Confirmed)</span>
+
+
+
+                <button class="btn btn-secondary" style="font-size:12px;padding:6px 12px;background:#f8fafc;border:1px solid #cbd5e1;color:#475569;" onclick="handlePreempt(${bk.booking_id})">⚡ Administrative Override</button>
+
             </div>
             <div id="appr-msg-${bk.booking_id}" style="display:none;margin-top:8px;font-size:13px;"></div>
         </div>

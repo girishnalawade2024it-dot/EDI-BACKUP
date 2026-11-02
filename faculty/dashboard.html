@@ -38,8 +38,8 @@
                 <p id="stat-approved" style="font-size:28px;font-weight:bold;color:#2563eb;"><span class="t3-stat-loading"></span></p>
             </div>
             <div class="card">
-                <h3>My Pending Requests</h3>
-                <p id="stat-pending" style="font-size:28px;font-weight:bold;color:#d97706;"><span class="t3-stat-loading"></span></p>
+                <h3>My Active Concerns</h3>
+                <p id="stat-concerns" style="font-size:28px;font-weight:bold;color:#ef4444;"><span class="t3-stat-loading"></span></p>
             </div>
         </div>
 
@@ -141,8 +141,8 @@ async function loadDashboard(user) {
     const appEl = document.getElementById('stat-approved');
     if (appEl) appEl.textContent = approved.length;
 
-    const pendEl = document.getElementById('stat-pending');
-    if (pendEl) pendEl.textContent = pending.length;
+    const { count: concernCount } = await supabase.from('concerns').select('*', { count: 'exact', head: true }).eq('user_id', user.userId).in('status', ['OPEN', 'UNDER_REVIEW']); const conEl = document.getElementById('stat-concerns');
+    if (conEl) conEl.textContent = concernCount ?? 0;
 
     // Render Calendar
     renderCalendar('calendar-container', rows, (selectedDate) => {
