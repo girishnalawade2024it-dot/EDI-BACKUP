@@ -183,6 +183,11 @@ async function loadConcerns() {
     
     allConcerns = await getAllConcerns();
     renderTable();
+    const urlParams = new URLSearchParams(window.location.search);
+    const targetId = parseInt(urlParams.get('concern_id') || urlParams.get('id'), 10);
+    if (targetId && allConcerns.some(x => x.concern_id === targetId)) {
+        openManageModal(targetId);
+    }
 }
 
 function renderTable() {

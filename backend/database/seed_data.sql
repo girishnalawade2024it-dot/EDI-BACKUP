@@ -8,7 +8,7 @@ INSERT OR IGNORE INTO roles (role_id, role_code, role_name, priority_rank, can_a
 VALUES
 (1, 'ADMIN',          'Admin',          0, 1, 1, 1, 90, 1),
 (2, 'FACULTY',        'Faculty',        1, 1, 1, 0, 30, 1),
-(3, 'LAB_ASSISTANT',  'Lab Assistant',  2, 0, 0, 0, 14, 1);
+(3, 'LAB_ASSISTANT',  'Lab Assistant',  2, 0, 1, 0, 14, 1);
 
 -- 2. Departments
 INSERT OR IGNORE INTO departments (department_id, department_code, department_name, is_active)

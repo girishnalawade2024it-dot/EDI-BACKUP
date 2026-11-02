@@ -287,13 +287,10 @@ def submit_booking(
                     "alternatives": alternatives,
                 }
 
-            # 4. Determine initial status based on role priority & auto-approval rules
-            # If there is a pending conflict, this request enters the approval queue as PENDING (FR-4.8)
-            # Otherwise: Faculty (rank 1) auto-approved; Lab Assistant (rank 2) queued as PENDING
-            if has_pending_conflict:
-                initial_status = "PENDING"
-            else:
-                initial_status = "APPROVED" if user["is_auto_approved"] else "PENDING"
+            # 4. Determine initial status:
+            # When slot is empty (no approved conflict), it is booked and confirmed automatically!
+            # It does NOT go to Admin. Only user concerns and disputes go to Admin.
+            initial_status = "APPROVED"
 
             booking_ref = generate_booking_reference()
 

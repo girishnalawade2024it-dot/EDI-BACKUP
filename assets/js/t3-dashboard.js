@@ -140,6 +140,17 @@ async function loadRecentActivity() {
     }
 }
 
+async function loadActiveConcerns() {
+    try {
+        const { count: openCount } = await supabase.from('concerns').select('*', { count: 'exact', head: true }).in('status', ['OPEN', 'UNDER_REVIEW']);
+        const count = openCount ?? 0;
+        setStatEl('stat-concerns', count);
+    } catch (e) {
+        console.warn('[T3 Dashboard] concerns count error:', e.message);
+        setStatError('stat-concerns');
+    }
+}
+
 // ── Boot ─────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
     // Load all stats in parallel
@@ -148,6 +159,7 @@ document.addEventListener('DOMContentLoaded', () => {
         loadTotalLabs(),
         loadTotalClassrooms(),
         loadActiveBookings(),
+        loadActiveConcerns(),
         loadPendingRequests(),
         loadTotalBookings(),
         loadRecentActivity(),

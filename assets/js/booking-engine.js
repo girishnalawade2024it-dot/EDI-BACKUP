@@ -274,22 +274,17 @@ export async function submitBooking({
         };
     }
 
-    // Determine role auto-approval: Faculty auto-allocates when slot is available
-    let isFaculty = true;
+    // Auto-approve rule: If slot is empty (no approved overlap or maintenance conflict),
+    // book it AUTOMATICALLY. The booking does NOT go to Admin.
+    // Only contention/conflict concerns raised by users go to Admin.
     const { data: userRecord } = await supabase
         .from('users')
         .select('user_id, name, role_id')
         .eq('user_id', userId)
         .single();
 
-    if (userRecord && userRecord.role_id === 2) {
-        // Role 2 = Lab Assistant: requires admin approval
-        isFaculty = false;
-    }
-
-    // Auto-approve faculty bookings when slot is free (no approved overlap and no pending conflict)
-    const isAutoApproved = isFaculty && overlap.pending.length === 0;
-    const initialStatus = isAutoApproved ? CONFIG.STATUS.APPROVED : CONFIG.STATUS.PENDING;
+    const isAutoApproved = true;
+    const initialStatus = CONFIG.STATUS.APPROVED;
 
     // Insert booking
     const { data: booking, error: insertErr } = await supabase
@@ -326,55 +321,33 @@ export async function submitBooking({
         resourceId,
         previousState:    null,
         newState:         initialStatus,
-        reason:           isAutoApproved
-            ? 'Auto-approved & allocated: resource slot was available'
-            : 'New booking request queued for review',
+        reason:           'Auto-approved & allocated: resource slot was available',
     });
 
-    if (isAutoApproved) {
-        // Notify faculty user of immediate confirmation
-        await insertNotification(
-            userId,
-            bookingId,
-            'BOOKING_APPROVED',
-            'Booking Confirmed & Allocated!',
-            `Your reservation (#BK-${bookingId}) for ${roomName} on ${dateFormatted} has been confirmed and allocated automatically.`
-        );
+    // Notify user of immediate confirmation
+    await insertNotification(
+        userId,
+        bookingId,
+        'BOOKING_APPROVED',
+        'Booking Confirmed & Allocated!',
+        `Your reservation (#BK-${bookingId}) for ${roomName} on ${dateFormatted} has been confirmed and allocated automatically.`
+    );
 
-        // Inform admins of the confirmed booking (no action required)
-        const { data: admins } = await supabase
-            .from('users')
-            .select('user_id')
-            .eq('role_id', 3);
+    // Inform admins for audit trail / awareness (no approval required)
+    const { data: admins } = await supabase
+        .from('users')
+        .select('user_id')
+        .eq('role_id', 3);
 
-        if (admins) {
-            for (const admin of admins) {
-                await insertNotification(
-                    admin.user_id,
-                    bookingId,
-                    'BOOKING_AUTO_APPROVED',
-                    'Faculty Booking Auto-Allocated',
-                    `Faculty member ${userRecord?.name || 'Faculty'} has secured an automatic booking (#BK-${bookingId}) for ${roomName} on ${dateFormatted}.`
-                );
-            }
-        }
-    } else {
-        // Non-auto-approved: Notify admin users for review
-        const { data: admins } = await supabase
-            .from('users')
-            .select('user_id')
-            .eq('role_id', 3);
-
-        if (admins) {
-            for (const admin of admins) {
-                await insertNotification(
-                    admin.user_id,
-                    bookingId,
-                    'BOOKING_PENDING',
-                    'New Booking Request',
-                    `A new booking request (#BK-${bookingId}) for ${roomName} requires administrative review.`
-                );
-            }
+    if (admins) {
+        for (const admin of admins) {
+            await insertNotification(
+                admin.user_id,
+                bookingId,
+                'BOOKING_AUTO_APPROVED',
+                'Resource Auto-Allocated',
+                `${userRecord?.name || 'User'} secured an automatic booking (#BK-${bookingId}) for ${roomName} on ${dateFormatted}.`
+            );
         }
     }
 
@@ -382,11 +355,9 @@ export async function submitBooking({
         success: true,
         bookingId,
         status: initialStatus,
-        isAutoApproved,
-        hasPendingConflict: overlap.pending.length > 0,
-        message: isAutoApproved
-            ? 'Booking confirmed! The resource has been automatically allocated to you.'
-            : 'Booking request submitted successfully and queued for review.',
+        isAutoApproved: true,
+        hasPendingConflict: false,
+        message: 'Booking confirmed! The resource has been automatically allocated to you.',
     };
 }
 

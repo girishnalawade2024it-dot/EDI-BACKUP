@@ -281,7 +281,9 @@ async function handleSubmitRequest(e) {
             alertEl.style.display = 'block';
             alertEl.style.background = '#f0fdf4';
             alertEl.style.color = '#15803d';
-            alertEl.textContent = `Maintenance request #BK-${res.bookingId} created successfully. Awaiting admin approval.`;
+            alertEl.textContent = (res.isAutoApproved || res.status === 'APPROVED')
+                ? `Maintenance slot #BK-${res.bookingId} confirmed & scheduled automatically! The laboratory is reserved.`
+                : `Maintenance request #BK-${res.bookingId} created successfully.`;
             document.getElementById('req-purpose').value = '';
             loadRequestsList();
         } else {
