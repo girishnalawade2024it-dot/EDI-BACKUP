@@ -120,26 +120,45 @@ def export_csv(
 
 @router.get("/groq-config")
 def groq_config():
-    """Returns Groq API key and model from environment variables if configured in .env."""
+    """Returns Groq API key and model from environment variables, .env, or .env.example."""
     import os
+    from pathlib import Path
     raw_key = os.getenv("GROQ_API_KEY", "").strip()
-    # Mask if it's the example placeholder
-    if raw_key in ("your_groq_api_key_here", "gsk_your_groq_api_key_here"):
-        raw_key = ""
+    model = os.getenv("GROQ_MODEL", "").strip()
+
+    if not raw_key or raw_key in ("your_groq_api_key_here", "gsk_your_groq_api_key_here"):
+        for fname in (".env", ".env.example"):
+            fpath = Path(__file__).resolve().parent.parent.parent / fname
+            if fpath.exists():
+                try:
+                    for line in fpath.read_text(encoding="utf-8").splitlines():
+                        line = line.strip()
+                        if line.startswith("GROQ_API_KEY=") and not raw_key:
+                            v = line.split("=", 1)[1].strip()
+                            if v and v not in ("your_groq_api_key_here", "gsk_your_groq_api_key_here"):
+                                raw_key = v
+                        elif line.startswith("GROQ_MODEL=") and not model:
+                            v = line.split("=", 1)[1].strip()
+                            if v:
+                                model = v
+                except Exception:
+                    pass
+            if raw_key:
+                break
+
     return {
         "groq_api_key": raw_key,
-        "groq_model": os.getenv("GROQ_MODEL", "llama-3.1-8b-instant"),
+        "groq_model": model or "openai/gpt-oss-120b",
     }
 
 
 ACTIVE_GROQ_FALLBACK_MODELS = [
-    "llama-3.1-8b-instant",
     "openai/gpt-oss-120b",
     "openai/gpt-oss-20b",
-    "qwen/qwen3.6-27b",
+    "qwen/qwen3.8-27b",
+    "allam-2-7b",
+    "llama-3.1-8b-instant",
     "deepseek-r1-distill-llama-70b",
-    "llama3-70b-8192",
-    "llama3-8b-8192",
 ]
 
 
@@ -174,7 +193,7 @@ def list_groq_models(api_key: Optional[str] = Query(None)):
         "https://api.groq.com/openai/v1/models",
         headers={
             "Authorization": f"Bearer {key}",
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) CampusBooking/1.1",
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
         },
     )
 
@@ -265,7 +284,7 @@ def generate_groq_insights(body: dict):
             headers={
                 "Authorization": f"Bearer {key}",
                 "Content-Type": "application/json",
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) CampusBooking/1.1",
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
             },
         )
         with urllib.request.urlopen(req, timeout=30) as resp:

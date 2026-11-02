@@ -633,10 +633,11 @@ let groqAnalysisResult = null;
 let groqModelUsed = '';
 
 const ACTIVE_CHAT_MODELS = [
-    'llama-3.1-8b-instant',
     'openai/gpt-oss-120b',
     'openai/gpt-oss-20b',
-    'qwen/qwen3.6-27b',
+    'qwen/qwen3.8-27b',
+    'allam-2-7b',
+    'llama-3.1-8b-instant',
     'deepseek-r1-distill-llama-70b',
     'llama3-70b-8192',
     'llama3-8b-8192'
@@ -722,7 +723,7 @@ async function fetchGroqInsights(apiKey, model) {
         underutilised_facilities: underutilised
     };
 
-    const targetModel = model || 'llama-3.1-8b-instant';
+    const targetModel = model || 'openai/gpt-oss-120b';
 
     // Tier 1: Attempt backend proxy endpoint (includes server-side retry across available models)
     try {
@@ -1476,23 +1477,25 @@ document.addEventListener('DOMContentLoaded', async () => {
                 let insights = '';
                 let modelUsed = 'AI Operations Strategic Engine';
 
-                // Check if a valid Groq API key is configured
+                // Check if a valid Groq API key and model are configured
                 let apiKey = localStorage.getItem('edi_groq_api_key');
-                if (!apiKey) {
-                    try {
-                        const res = await fetch('/api/reports/groq-config');
-                        if (res.ok) {
-                            const cfg = await res.json();
-                            if (cfg?.groq_api_key) apiKey = cfg.groq_api_key;
-                        }
-                    } catch (_) {}
-                }
+                let targetModel = 'openai/gpt-oss-120b';
+
+                try {
+                    const res = await fetch('/api/reports/groq-config');
+                    if (res.ok) {
+                        const cfg = await res.json();
+                        if (cfg?.groq_api_key) apiKey = cfg.groq_api_key;
+                        if (cfg?.groq_model) targetModel = cfg.groq_model;
+                    }
+                } catch (_) {}
 
                 if (apiKey && apiKey.trim().length > 10) {
                     try {
-                        const result = await fetchGroqInsights(apiKey, 'llama-3.1-8b-instant');
+                        // Real API Call to Groq Cloud endpoint
+                        const result = await fetchGroqInsights(apiKey, targetModel);
                         insights = typeof result === 'string' ? result : (result?.insights || '');
-                        modelUsed = (typeof result === 'object' && result?.model) ? result.model : 'Llama 3.1 8B (Groq)';
+                        modelUsed = (typeof result === 'object' && result?.model) ? result.model : targetModel;
                     } catch (err) {
                         console.warn('[AI Insights] Remote LLM attempt fell back to offline engine:', err);
                         insights = generateOfflineInsights();
